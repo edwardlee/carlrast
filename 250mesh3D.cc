@@ -364,7 +364,7 @@ struct Landscape : public Mesh<2 * (size - 1) * (size - 1), size * size, 8> {
 using Mesh<2 * (size - 1) * (size - 1), size * size>::SetVertex;
 using Mesh<2 * (size - 1) * (size - 1), size * size>::vert;
 using Mesh<2 * (size - 1) * (size - 1), size * size>::SetTriangle;
-void Build(double spacing, const double *data) {
+void Build(double spacing, array<array<double, size>, size> data) {
 
     int i, j, error;
     int a, b, c, d;
@@ -374,7 +374,7 @@ void Build(double spacing, const double *data) {
         /* Build the vertices with normals set to 0. */
         for (i = 0; i < size; i += 1)
             for (j = 0; j < size; j += 1) {
-                SetVertex(i * size + j, {i * spacing, j * spacing, data[i * size + j], 
+                SetVertex(i * size + j, {i * spacing, j * spacing, data[i][j], 
                     (double)i, (double)j, 0., 0., 0.});
             }
         /* Build the triangles. */

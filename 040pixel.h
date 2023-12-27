@@ -18,7 +18,7 @@ The important thing is that invocations of pixInitialize and pixFinalize come in
 non-overlapping pairs. The pixel system is designed to support only one active 
 window at a time. */
 
-
+extern GLFWwindow *pixWindow;
 
 /*** Miscellaneous ***/
 

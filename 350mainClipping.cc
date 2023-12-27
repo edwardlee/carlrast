@@ -1,11 +1,7 @@
 /* On Ubuntu, compile with...
     g++ 350mainClipping.cc -std=c++20 040pixel.o gl3w.o -lglfw -Ofast -march=native */
 
-#include <cstdio>
-#include <ctime>
 #include <GLFW/glfw3.h>
-
-#include "040pixel.h"
 
 #include "280matrix.cc"
 #include "150texture.cc"
@@ -18,43 +14,20 @@
 #include "300isometry.cc"
 #include "300camera.cc"
 #include "340landscape.cc"
-
-#define LANDSIZE 40
-
-#define ATTRX 0
-#define ATTRY 1
-#define ATTRZ 2
-#define ATTRS 3
-#define ATTRT 4
-#define ATTRN 5
-#define ATTRO 6
-#define ATTRP 7
-#define VARYX 0
-#define VARYY 1
-#define VARYZ 2
-#define VARYW 3
-#define VARYS 4
-#define VARYT 5
-#define VARYN 6
-#define VARYO 7
-#define VARYP 8
-#define VARY1 9
-#define UNIFMODELING 0
-#define UNIFPROJINVISOM 16
-#define TEXR 0
-#define TEXG 1
-#define TEXB 2
+enum Attr {X, Y, Z, SA, TA, NA, OA, PA};
+enum Vary {W=3, SV, TV, NV, OV, PV, Q};
+enum Unif {MODELING, PROJINVISOM=16};
 
 /* The first four entries of vary are assumed to be X, Y, Z, W. */
 void shadeVertex(
         int unifDim, const double unif[], int attrDim, const double attr[], 
         int varyDim, double (&vary)[]) {
-	double attrHomog[4] = {attr[ATTRX], attr[ATTRY], attr[ATTRZ], 1.};
+	double attrHomog[4] = {attr[X], attr[Y], attr[Z], 1.};
 	double modHomog[4];
-	mat441Multiply((double(*)[4])(&unif[UNIFMODELING]), attrHomog, modHomog);
-	mat441Multiply((double(*)[4])(&unif[UNIFPROJINVISOM]), modHomog, (double(&)[4])vary);
-	std::copy_n(&attr[ATTRS], 5, &vary[VARYS]);
-    vary[VARY1] = 1.;
+	mat441Multiply((double(*)[4])(&unif[MODELING]), attrHomog, modHomog);
+	mat441Multiply((double(*)[4])(&unif[PROJINVISOM]), modHomog, (double(&)[4])vary);
+	copy_n(&attr[SA], 5, &vary[SV]);
+    vary[Q] = 1.;
 }
 
 void shadeFragment(
@@ -62,17 +35,17 @@ void shadeFragment(
         int varyDim, const double vary[], double (&rgbd)[4]) {
     double vary1[varyDim];
     std::copy_n(vary, varyDim, vary1);
-    for(int i = VARYS; i < varyDim; ++i) vary1[i] /= vary[VARY1];
+    for(int i = SV; i < varyDim; ++i) vary1[i] /= vary[Q];
 	double sample[tex[0]->texelDim];
-	texSample(tex[0], vary1[VARYS], vary1[VARYT], sample);
+	texSample(tex[0], vary1[SV], vary1[TV], sample);
 	sample[0] = sample[1] * 0.2 + 0.8;
 	sample[1] = sample[1] * 0.2 + 0.6;
 	sample[2] = 0.3;
-	double intensity = vary1[VARYP];
-	double l = vary1[VARYN]*vary1[VARYN] + vary1[VARYO]*vary1[VARYO] + vary1[VARYP]*vary1[VARYP];
+	double intensity = vary1[PV];
+	double l = vary1[NV]*vary1[NV] + vary1[OV]*vary1[OV] + vary1[PV]*vary1[PV];
 	intensity /= sqrt(l);
     for(int i = 0; i < 3; ++i) rgbd[i] = intensity * sample[i];
-	rgbd[3] = vary[VARYZ];
+	rgbd[3] = vary[Z];
 }
 
 depthBuffer buf;
@@ -91,15 +64,15 @@ double unif[16 + 16] = {
 	0., 0., 1., 0., 
 	0., 0., 0., 1.};
 double viewport[4][4];
-camCamera cam;
-double angle = M_PI * 0.25;
+Camera cam;
+double angle = M_PI_4;
 
-void render(void) {
+void render() {
 	pixClearRGB(0.8, 0.8, 1.);
 	depthClearDepths(&buf, 1000000000.);
 	double projInvIsom[4][4];
-	camGetProjectionInverseIsometry(&cam, projInvIsom);
-    std::copy_n((double *)projInvIsom, 16, &unif[UNIFPROJINVISOM]);
+	cam.GetProjectionInverseIsometry(projInvIsom);
+    std::copy_n((double *)projInvIsom, 16, &unif[PROJINVISOM]);
 	landMesh.Render(&buf, viewport, &sha, unif, tex);
 }
 
@@ -113,10 +86,10 @@ void handleKeyUp(
 			texSetFiltering(&texture, texLINEAR);
 	} else if (key == GLFW_KEY_P) {
 	    if (cam.projectionType == camORTHOGRAPHIC)
-		    camSetProjectionType(&cam, camPERSPECTIVE);
+		    cam.SetProjectionType(camPERSPECTIVE);
 		else
-		    camSetProjectionType(&cam, camORTHOGRAPHIC);
-        camSetFrustum(&cam, M_PI / 6., 10., 10., 512, 512);
+		    cam.SetProjectionType(camORTHOGRAPHIC);
+        cam.SetFrustum(M_PI / 6., 10., 10., 512, 512);
 	}
 }
 
@@ -126,11 +99,11 @@ void handleKeyDownAndRepeat(
     double position[3];
     std::copy_n(cam.isometry.translation, 3, position);
     if (key == GLFW_KEY_W) {
-        double delta[3] = {cos(angle), sin(angle), 0.};
-        for(int i = 0; i < 3; ++i) position[i] += delta[i];
+        position[0] += cos(angle);
+	position[1] += sin(angle);
     } else if (key == GLFW_KEY_S) {
-        double delta[3] = {cos(angle), sin(angle), 0.};
-        for(int i = 0; i < 3; ++i) position[i] -= delta[i];
+        position[0] -= cos(angle);
+        position[1] -= sin(angle);
     } else if (key == GLFW_KEY_A)
         angle += M_PI / 120.;
     else if (key == GLFW_KEY_D)
@@ -139,28 +112,24 @@ void handleKeyDownAndRepeat(
         position[2] -= 1.;
     else if (key == GLFW_KEY_E)
         position[2] += 1.;
-    camLookFrom(&cam, position, M_PI * 0.6, angle);
+    cam.LookFrom(position, M_PI * 0.6, angle);
 }
 
 void handleTimeStep(double oldTime, double newTime) {
 	if (floor(newTime) - floor(oldTime) >= 1.)
-		printf("handleTimeStep: %f frames/sec\n", 1. / (newTime - oldTime));
+		glfwSetWindowTitle(pixWindow, (to_string(1./(newTime-oldTime))+" frames/sec").c_str());
 	render();
 }
 
 int main() {
     /* Randomly generate a grid of elevation data. */
-    double landData[LANDSIZE * LANDSIZE];
-    landFlat(LANDSIZE, landData, 0.);
-    time_t t;
-	srand((unsigned)time(&t));
-    for (int i = 0; i < 12; i += 1)
-		landFaultRandomly(LANDSIZE, (double *)landData, 1. - i * 0.04);
-	for (int i = 0; i < 4; i += 1)
-		landBlur(LANDSIZE, (double *)landData);
-	for (int i = 0; i < 4; i += 1)
-		landBump(LANDSIZE, (double *)landData, landInt(0, LANDSIZE - 1), 
-		    landInt(0, LANDSIZE - 1), 5., 1.);
+    Land land;
+    for (double m = 0.56; m <= 1; m += 0.04)
+		land.FaultRandomly(m);
+	land.Blur();
+	uniform_int_distribution uid(0, LANDSIZE);
+	for (int i = 0; i < 4; ++i)
+		land.Bump(uid(land.gen), uid(land.gen), 5., 1.);
     /* Marshal resources. */
 	if (pixInitialize(512, 512, "Landscape") != 0)
 		return 1;
@@ -173,11 +142,10 @@ int main() {
 	    pixFinalize();
 		return 2;
 	}
-    landMesh.Build(1., landData);
+    landMesh.Build(1., land.data);
 	/* Manually re-assign texture coordinates. */
-	for (int i = 0; i < landMesh.vert.size(); i += 1) {
-	    landMesh.vert[i][ATTRS] = 0.;
-	    landMesh.vert[i][ATTRT] = landMesh.vert[i][ATTRZ];
+	for (double *v : landMesh.vert) {
+	    v[TA] = v[Z];
 	}
 	/* Configure texture. */
     texSetFiltering(&texture, texNEAREST);
@@ -192,10 +160,10 @@ int main() {
     sha.texNum = 1;
     /* Configure viewport and camera. */
     mat44Viewport(512, 512, viewport);
-    camSetProjectionType(&cam, camPERSPECTIVE);
-    camSetFrustum(&cam, M_PI / 6., 10., 10., 512, 512);
+    cam.SetProjectionType(camPERSPECTIVE);
+    cam.SetFrustum(M_PI / 6., 10., 10., 512, 512);
     double position[3] = {-5., -5., 20.};
-    camLookFrom(&cam, position, M_PI * 0.6, angle);
+    cam.LookFrom(position, M_PI * 0.6, angle);
 	/* Run user interface. */
     render();
     pixSetKeyDownHandler(handleKeyDownAndRepeat);
