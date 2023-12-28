@@ -25,17 +25,12 @@ flat-shaded normals. If a vertex belongs to more than triangle, then some
 unspecified triangle's normal wins. */
 template<size_t t, size_t v, size_t a>
 void mesh3DFlatNormals(Mesh<t,v,a> *mesh, int n) {
-    int i, *tri;
     double *a_, *b, *c, normal[3];
-    for (i = 0; i < t; i += 1) {
-        tri = mesh->GetTrianglePointer(i);
-        a_ = mesh->GetVertexPointer(tri[0]);
-        b = mesh->GetVertexPointer(tri[1]);
-        c = mesh->GetVertexPointer(tri[2]);
+    for (int *p : mesh->tri) {
+        a_ = mesh->vert[p[0]];
+        b = mesh->vert[p[1]];
+        c = mesh->vert[p[2]];
         mesh3DTrueNormal(a_, b, c, normal);
-		std::copy_n(mesh->vert[tri[0]], 3, normal);
-		std::copy_n(mesh->vert[tri[0]], 3, normal);
-		std::copy_n(mesh->vert[tri[0]], 3, normal);
 		std::copy_n(normal, 3, &a_[n]);
 		std::copy_n(normal, 3, &b[n]);
 		std::copy_n(normal, 3, &c[n]);
@@ -47,18 +42,12 @@ smooth-shaded normals. Does not do anything special to handle multiple vertices
 with the same coordinates. */
 template<size_t t, size_t v, size_t A>
 void mesh3DSmoothNormals(Mesh<t,v,A> *mesh, int n) {
-    int i, *tri;
-    double *a, *b, *c, normal[3] = {0., 0., 0.};
-    /* Zero the normals. */
-    // for (double *i : mesh->vert) {
-    //     std::copy_n(normal, 3, &i[n]);
-    // }
+    double *a, *b, *c, normal[3];
     /* For each triangle, add onto the normal at each of its vertices. */
-    for (int *i : mesh->tri) {
-        // tri = mesh->GetTrianglePointer(i);
-        a = mesh->GetVertexPointer(i[0]);
-        b = mesh->GetVertexPointer(i[1]);
-        c = mesh->GetVertexPointer(i[2]);
+    for (int *p : mesh->tri) {
+        a = mesh->vert[p[0]];
+        b = mesh->vert[p[1]];
+        c = mesh->vert[p[2]];
         mesh3DTrueNormal(a, b, c, normal);
         for(int i = 0; i < 3; ++i) a[n+i] += normal[i];
         for(int i = 0; i < 3; ++i) b[n+i] += normal[i];
@@ -67,8 +56,8 @@ void mesh3DSmoothNormals(Mesh<t,v,A> *mesh, int n) {
     /* Normalize the normals. */
     for (double *a : mesh->vert) {
         int m = 0;
-        for(int i = 0; i < 3; ++i) m += a[n+i];
-        if(m) for(int i = 0; i < 3; ++i) a[n+i] /= m;
+        for(int i = 0; i < 3; ++i) m += a[n+i] * a[n+i];
+        if(m) for(int i = 0; i < 3; ++i) a[n+i] /= sqrt(m);
     }
 }
 
@@ -365,12 +354,9 @@ using Mesh<2 * (size - 1) * (size - 1), size * size>::SetVertex;
 using Mesh<2 * (size - 1) * (size - 1), size * size>::vert;
 using Mesh<2 * (size - 1) * (size - 1), size * size>::SetTriangle;
 void Build(double spacing, array<array<double, size>, size> data) {
-
-    int i, j, error;
+    int i, j;
     int a, b, c, d;
     double diffSWNE, diffSENW;
-    // error = meshInitialize(mesh, 2 * (size - 1) * (size - 1), size * size, 
-    //     3 + 2 + 3);
         /* Build the vertices with normals set to 0. */
         for (i = 0; i < size; i += 1)
             for (j = 0; j < size; j += 1) {
@@ -378,8 +364,8 @@ void Build(double spacing, array<array<double, size>, size> data) {
                     (double)i, (double)j, 0., 0., 0.});
             }
         /* Build the triangles. */
-        for (i = 0; i < size - 1; i += 1)
-            for (j = 0; j < size - 1; j += 1) {
+        for (i = 0; i < size - 1; ++i)
+            for (j = 0; j < size - 1; ++j) {
                 int index = 2 * (i * (size - 1) + j);
                 a = i * size + j;
                 b = (i + 1) * size + j;
@@ -398,13 +384,6 @@ void Build(double spacing, array<array<double, size>, size> data) {
                 }
             }
         /* Set the normals. */
-        mesh3DSmoothNormals(this, 5);
-
+        mesh3DFlatNormals(this, 5);
 }
 };
-
-/* Given a landscape, such as that built by meshInitializeLandscape. Builds a 
-new landscape mesh by extracting triangles based on how horizontal they are. If 
-noMoreThan is true, then triangles are kept that deviate from horizontal by no more than angle. If noMoreThan is false, then triangles are kept that deviate 
-from horizontal by more than angle. Don't forget to call meshFinalize when 
-finished. Warning: May contain extraneous vertices not used by any triangle. */

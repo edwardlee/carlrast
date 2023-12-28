@@ -33,17 +33,11 @@ void shadeVertex(
 void shadeFragment(
         int unifDim, const double unif[], int texNum, const texTexture *tex[], 
         int varyDim, const double vary[], double (&rgbd)[4]) {
-    double vary1[varyDim];
-    std::copy_n(vary, varyDim, vary1);
-    for(int i = SV; i < varyDim; ++i) vary1[i] /= vary[Q];
 	double sample[tex[0]->texelDim];
-	texSample(tex[0], vary1[SV], vary1[TV], sample);
+	texSample(tex[0], 0., vary[TV]/vary[Q], sample);
 	sample[0] = sample[1] * 0.2 + 0.8;
 	sample[1] = sample[1] * 0.2 + 0.6;
-	sample[2] = 0.3;
-	double intensity = vary1[PV];
-	double l = vary1[NV]*vary1[NV] + vary1[OV]*vary1[OV] + vary1[PV]*vary1[PV];
-	intensity /= sqrt(l);
+	double intensity = vary[PV] / sqrt(vary[NV]*vary[NV] + vary[OV]*vary[OV] + vary[PV]*vary[PV]);
     for(int i = 0; i < 3; ++i) rgbd[i] = intensity * sample[i];
 	rgbd[3] = vary[Z];
 }
@@ -72,7 +66,7 @@ void render() {
 	depthClearDepths(&buf, 1000000000.);
 	double projInvIsom[4][4];
 	cam.GetProjectionInverseIsometry(projInvIsom);
-    std::copy_n((double *)projInvIsom, 16, &unif[PROJINVISOM]);
+    copy_n((double *)projInvIsom, 16, &unif[PROJINVISOM]);
 	landMesh.Render(&buf, viewport, &sha, unif, tex);
 }
 
@@ -85,10 +79,7 @@ void handleKeyUp(
 		else
 			texSetFiltering(&texture, texLINEAR);
 	} else if (key == GLFW_KEY_P) {
-	    if (cam.projectionType == camORTHOGRAPHIC)
-		    cam.SetProjectionType(camPERSPECTIVE);
-		else
-		    cam.SetProjectionType(camORTHOGRAPHIC);
+	    cam.projectionType ^= 1;
         cam.SetFrustum(M_PI / 6., 10., 10., 512, 512);
 	}
 }
@@ -97,7 +88,7 @@ void handleKeyDownAndRepeat(
         int key, int shiftIsDown, int controlIsDown, int altOptionIsDown, 
         int superCommandIsDown) {
     double position[3];
-    std::copy_n(cam.isometry.translation, 3, position);
+    copy_n(cam.isometry.translation, 3, position);
     if (key == GLFW_KEY_W) {
         position[0] += cos(angle);
 	position[1] += sin(angle);
@@ -160,12 +151,11 @@ int main() {
     sha.texNum = 1;
     /* Configure viewport and camera. */
     mat44Viewport(512, 512, viewport);
-    cam.SetProjectionType(camPERSPECTIVE);
+    cam.projectionType = PERSPECTIVE;
     cam.SetFrustum(M_PI / 6., 10., 10., 512, 512);
     double position[3] = {-5., -5., 20.};
     cam.LookFrom(position, M_PI * 0.6, angle);
 	/* Run user interface. */
-    render();
     pixSetKeyDownHandler(handleKeyDownAndRepeat);
     pixSetKeyRepeatHandler(handleKeyDownAndRepeat);
     pixSetKeyUpHandler(handleKeyUp);

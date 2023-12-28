@@ -1,19 +1,13 @@
 /*** Projections ***/
 
-#define camORTHOGRAPHIC 0
-#define camPERSPECTIVE 1
-#define camPROJL 0
-#define camPROJR 1
-#define camPROJB 2
-#define camPROJT 3
-#define camPROJF 4
-#define camPROJN 5
+enum Ptype {ORTHOGRAPHIC, PERSPECTIVE};
 
 struct Camera {
 	double projection[6];
 	int projectionType;
 	isoIsometry isometry;
-/* Sets the projection type, to either camORTHOGRAPHIC or camPERSPECTIVE. */
+	enum Pind {L, R, B, T, F, N};
+/* Sets the projection type, to either ORTHOGRAPHIC or PERSPECTIVE. */
 void SetProjectionType(int projType) {
 	projectionType = projType;
 }
@@ -35,12 +29,12 @@ plane the box is the same rectangle R. Keep in mind that 0 > near > far. Maps
 the viewing volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near 
 going to -1. */
 void GetOrthographic(double (&proj)[4][4]) {
-	double left = projection[camPROJL];
-	double right = projection[camPROJR];
-	double bottom = projection[camPROJB];
-	double top = projection[camPROJT];
-	double far = projection[camPROJF];
-	double near = projection[camPROJN];
+	double left = projection[L];
+	double right = projection[R];
+	double bottom = projection[B];
+	double top = projection[T];
+	double far = projection[F];
+	double near = projection[N];
 	mat44Zero(proj);
 	proj[0][0] = 2. / (right - left);
 	proj[0][3] = (-right - left) / (right - left);
@@ -53,12 +47,12 @@ void GetOrthographic(double (&proj)[4][4]) {
 
 /* Inverse to the matrix produced by camGetOrthographic. */
 void GetInverseOrthographic(double (&proj)[4][4]) {
-	double left = projection[camPROJL];
-	double right = projection[camPROJR];
-	double bottom = projection[camPROJB];
-	double top = projection[camPROJT];
-	double far = projection[camPROJF];
-	double near = projection[camPROJN];
+	double left = projection[L];
+	double right = projection[R];
+	double bottom = projection[B];
+	double top = projection[T];
+	double far = projection[F];
+	double near = projection[N];
 	mat44Zero(proj);
 	proj[0][0] = (right - left) / 2.;
 	proj[0][3] = (right + left) / 2.;
@@ -76,12 +70,12 @@ far plane, the frustum is the rectangle (far / near) * R. Maps the viewing
 volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near going to 
 -1. */
 void GetPerspective(double (&proj)[4][4]) {
-	double left = projection[camPROJL];
-	double right = projection[camPROJR];
-	double bottom = projection[camPROJB];
-	double top = projection[camPROJT];
-	double far = projection[camPROJF];
-	double near = projection[camPROJN];
+	double left = projection[L];
+	double right = projection[R];
+	double bottom = projection[B];
+	double top = projection[T];
+	double far = projection[F];
+	double near = projection[N];
 	mat44Zero(proj);
 	proj[0][0] = (-2. * near) / (right - left);
 	proj[0][2] = (right + left) / (right - left);
@@ -94,12 +88,12 @@ void GetPerspective(double (&proj)[4][4]) {
 
 /* Inverse to the matrix produced by camGetPerspective. */
 void GetInversePerspective(double (&proj)[4][4]) {
-	double left = projection[camPROJL];
-	double right = projection[camPROJR];
-	double bottom = projection[camPROJB];
-	double top = projection[camPROJT];
-	double far = projection[camPROJF];
-	double near = projection[camPROJN];
+	double left = projection[L];
+	double right = projection[R];
+	double bottom = projection[B];
+	double top = projection[T];
+	double far = projection[F];
+	double near = projection[N];
 	mat44Zero(proj);
 	proj[0][0] = (right - left) / (-2. * near);
 	proj[0][3] = (right + left) / (-2. * near);
@@ -129,16 +123,16 @@ re-invoke this function after each time you resize the viewport. */
 void SetFrustum(
         double fovy, double focal, double ratio, double width, 
         double height) {
-	projection[camPROJF] = -focal * ratio;
-	projection[camPROJN] = -focal / ratio;
+	projection[F] = -focal * ratio;
+	projection[N] = -focal / ratio;
 	double tanHalfFovy = tan(fovy * 0.5);
-	if (projectionType == camPERSPECTIVE)
-		projection[camPROJT] = -projection[camPROJN] * tanHalfFovy;
+	if (projectionType == PERSPECTIVE)
+		projection[T] = -projection[N] * tanHalfFovy;
 	else
-		projection[camPROJT] = focal * tanHalfFovy;
-	projection[camPROJB] = -projection[camPROJT];
-	projection[camPROJR] = projection[camPROJT] * width / height;
-	projection[camPROJL] = -projection[camPROJR];
+		projection[T] = focal * tanHalfFovy;
+	projection[B] = -projection[T];
+	projection[R] = projection[T] * width / height;
+	projection[L] = -projection[R];
 }
 
 /* Returns the homogeneous 4x4 product of the camera's projection and the 
@@ -146,7 +140,7 @@ camera's inverse isometry (regardless of whether the camera is in orthographic
 or perspective mode). */
 void GetProjectionInverseIsometry(double (&homog)[4][4]) {
 	double proj[4][4], inviso[4][4];
-	if(projectionType == camORTHOGRAPHIC) {
+	if(projectionType == ORTHOGRAPHIC) {
 		GetOrthographic(proj);
 	} else {
 		GetPerspective(proj);
@@ -173,9 +167,9 @@ void LookAt(
     z[0] = sin(phi) * cos(theta);
     z[1] = sin(phi) * sin(theta);
     z[2] = cos(phi);
-	y[0] = sin(M_PI / 2. - phi) * cos(theta + M_PI);
-    y[1] = sin(M_PI / 2. - phi) * sin(theta + M_PI);
-    y[2] = cos(M_PI / 2. - phi);
+	y[0] = sin(M_PI_2 - phi) * cos(theta + M_PI);
+    y[1] = sin(M_PI_2 - phi) * sin(theta + M_PI);
+    y[2] = cos(M_PI_2 - phi);
 	mat33BasisRotation(yStd, zStd, y, z, rot);
 	isoSetRotation(&(isometry), rot);
 	for(int i = 0; i < 3; ++i)
@@ -197,9 +191,9 @@ void LookFrom(
 	negZ[0] = sin(phi) * cos(theta);
     negZ[1] = sin(phi) * sin(theta);
     negZ[2] = cos(phi);
-	y[0] = sin(M_PI / 2. - phi) * cos(theta + M_PI);
-    y[1] = sin(M_PI / 2. - phi) * sin(theta + M_PI);
-    y[2] = cos(M_PI / 2. - phi);
+	y[0] = sin(M_PI_2 - phi) * cos(theta + M_PI);
+    y[1] = sin(M_PI_2 - phi) * sin(theta + M_PI);
+    y[2] = cos(M_PI_2 - phi);
 	mat33BasisRotation(yStd, negZStd, y, negZ, rot);
 	isoSetRotation(&(isometry), rot);
 	isoSetTranslation(&(isometry), position);
