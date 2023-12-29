@@ -3,29 +3,25 @@
 
 #include <GLFW/glfw3.h>
 
-#include "280matrix.cc"
 #include "150texture.cc"
 #include "260shading.cc"
 #include "260depth.cc"
 #include "270triangle.cc"
+#include "280matrix.cc"
 #include "350mesh.cc"
-#include "190mesh2D.cc"
 #include "250mesh3D.cc"
 #include "300isometry.cc"
 #include "300camera.cc"
 #include "340landscape.cc"
 enum Attr {X, Y, Z, SA, TA, NA, OA, PA};
 enum Vary {W=3, SV, TV, NV, OV, PV, Q};
-enum Unif {MODELING, PROJINVISOM=16};
 
 /* The first four entries of vary are assumed to be X, Y, Z, W. */
 void shadeVertex(
         int unifDim, const double unif[], int attrDim, const double attr[], 
         int varyDim, double (&vary)[]) {
 	double attrHomog[4] = {attr[X], attr[Y], attr[Z], 1.};
-	double modHomog[4];
-	mat441Multiply((double(*)[4])(&unif[MODELING]), attrHomog, modHomog);
-	mat441Multiply((double(*)[4])(&unif[PROJINVISOM]), modHomog, (double(&)[4])vary);
+	mat441Multiply((double(*)[4])(unif), attrHomog, (double(&)[4])vary);
 	copy_n(&attr[SA], 5, &vary[SV]);
     vary[Q] = 1.;
 }
@@ -33,12 +29,12 @@ void shadeVertex(
 void shadeFragment(
         int unifDim, const double unif[], int texNum, const texTexture *tex[], 
         int varyDim, const double vary[], double (&rgbd)[4]) {
-	double sample[tex[0]->texelDim];
-	texSample(tex[0], 0., vary[TV]/vary[Q], sample);
-	sample[0] = sample[1] * 0.2 + 0.8;
-	sample[1] = sample[1] * 0.2 + 0.6;
+	texSample(tex[0], 0., vary[TV]/vary[Q], rgbd);
+	rgbd[0] = rgbd[1] * 0.2 + 0.8;
+	rgbd[1] = rgbd[1] * 0.2 + 0.5;
+    // rgbd[2] = 0.6;
 	double intensity = vary[PV] / sqrt(vary[NV]*vary[NV] + vary[OV]*vary[OV] + vary[PV]*vary[PV]);
-    for(int i = 0; i < 3; ++i) rgbd[i] = intensity * sample[i];
+    for(int i = 0; i < 3; ++i) rgbd[i] *= intensity;
 	rgbd[3] = vary[Z];
 }
 
@@ -48,25 +44,15 @@ texTexture texture;
 const texTexture *textures[1] = {&texture};
 const texTexture **tex = textures;
 Landscape<LANDSIZE> landMesh;
-double unif[16 + 16] = {
-	1., 0., 0., 0., 
-	0., 1., 0., 0., 
-	0., 0., 1., 0., 
-	0., 0., 0., 1., 
-	1., 0., 0., 0., 
-	0., 1., 0., 0., 
-	0., 0., 1., 0., 
-	0., 0., 0., 1.};
+double unif[16];
 double viewport[4][4];
 Camera cam;
 double angle = M_PI_4;
 
 void render() {
-	pixClearRGB(0.8, 0.8, 1.);
-	depthClearDepths(&buf, 1000000000.);
-	double projInvIsom[4][4];
-	cam.GetProjectionInverseIsometry(projInvIsom);
-    copy_n((double *)projInvIsom, 16, &unif[PROJINVISOM]);
+	pixClearRGB(0.6, 0.2, 0.1);
+	depthClearDepths(&buf, 1.);
+	cam.GetProjectionInverseIsometry((double(&)[4][4])unif);
 	landMesh.Render(&buf, viewport, &sha, unif, tex);
 }
 
@@ -87,11 +73,10 @@ void handleKeyUp(
 void handleKeyDownAndRepeat(
         int key, int shiftIsDown, int controlIsDown, int altOptionIsDown, 
         int superCommandIsDown) {
-    double position[3];
-    copy_n(cam.isometry.translation, 3, position);
+    double *position = cam.iso.translation;
     if (key == GLFW_KEY_W) {
         position[0] += cos(angle);
-	position[1] += sin(angle);
+	    position[1] += sin(angle);
     } else if (key == GLFW_KEY_S) {
         position[0] -= cos(angle);
         position[1] -= sin(angle);
@@ -115,7 +100,7 @@ void handleTimeStep(double oldTime, double newTime) {
 int main() {
     /* Randomly generate a grid of elevation data. */
     Land land;
-    for (double m = 0.56; m <= 1; m += 0.04)
+    for (double m = 0.56; m <= 1.; m += 0.04)
 		land.FaultRandomly(m);
 	land.Blur();
 	uniform_int_distribution uid(0, LANDSIZE);
@@ -135,7 +120,7 @@ int main() {
 	}
     landMesh.Build(1., land.data);
 	/* Manually re-assign texture coordinates. */
-	for (double *v : landMesh.vert) {
+	for (auto &&v : landMesh.vert) {
 	    v[TA] = v[Z];
 	}
 	/* Configure texture. */
@@ -143,7 +128,7 @@ int main() {
     texSetLeftRight(&texture, texREPEAT);
     texSetTopBottom(&texture, texREPEAT);
     /* Configure shader program. */
-    sha.unifDim = 16 + 16;
+    sha.unifDim = 16;
     sha.attrDim = 3 + 2 + 3;
     sha.varyDim = 4 + 2 + 3 + 1;
     sha.shadeVertex = shadeVertex;
