@@ -2,7 +2,7 @@
 #include "040pixel.h"
 
 void triRender(
-        const shaShading *sha, depthBuffer *buf, const double (&unif)[], 
+        const shaShading *sha, Depth buf, const double (&unif)[], 
         const texTexture *tex[], const double (&a)[], const double (&b)[], 
         const double (&c)[]) {
     // 28.4 fixed-point coordinates, compare c vs cpp round asm with ofast
@@ -12,7 +12,7 @@ void triRender(
 
     // Bounding rectangle
     int miny = fmax(std::min({Y1, Y2, Y3}) + 0xF >> 4, 0);
-    int maxy = fmin(std::max({Y1, Y2, Y3}) + 0xF >> 4, buf->height);
+    int maxy = fmin(std::max({Y1, Y2, Y3}) + 0xF >> 4, buf.height);
     // if(miny >= maxy) return;
 
     const int X1 = round(16 * a[0]);
@@ -20,7 +20,7 @@ void triRender(
     const int X3 = std::round(16 * c[0]);
 
     int minx = fmax(std::min({X1, X2, X3}) + 0xF >> 4, 0);
-    int maxx = fmin(std::max({X1, X2, X3}) + 0xF >> 4, buf->width);
+    int maxx = fmin(std::max({X1, X2, X3}) + 0xF >> 4, buf.width);
     // if(minx >= maxx) return;
 
     // Deltas
@@ -70,9 +70,9 @@ void triRender(
 					attr[i] = (a[i]*CX2 + b[i]*CX3 + c[i]*CX1)*den;
 				double rgbd[4];
 				sha->shadeFragment(sha->unifDim, unif, sha->texNum, tex, sha->varyDim, attr, rgbd);
-                if(rgbd[3] < depthGetDepth(buf, x, y)) {
+                if(rgbd[3] < buf[y][x]) {
                     pixSetRGB(x, y, rgbd[0], rgbd[1], rgbd[2]);
-                    depthSetDepth(buf, x, y, rgbd[3]);
+                    buf[y][x] = rgbd[3];
                 }
             }
             CX1 -= FDY12;

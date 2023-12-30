@@ -38,7 +38,7 @@ void shadeFragment(
 	rgbd[3] = vary[Z];
 }
 
-depthBuffer buf;
+Depth buf(512, 512);
 shaShading sha;
 texTexture texture;
 const texTexture *textures[1] = {&texture};
@@ -51,9 +51,9 @@ double angle = M_PI_4;
 
 void render() {
 	pixClearRGB(0.6, 0.2, 0.1);
-	depthClearDepths(&buf, 1.);
+	buf.Clear(1.);
 	cam.GetProjectionInverseIsometry((double(&)[4][4])unif);
-	landMesh.Render(&buf, viewport, &sha, unif, tex);
+	landMesh.Render(buf, viewport, &sha, unif, tex);
 }
 
 void handleKeyUp(
@@ -109,12 +109,7 @@ int main() {
     /* Marshal resources. */
 	if (pixInitialize(512, 512, "Landscape") != 0)
 		return 1;
-	if (depthInitialize(&buf, 512, 512) != 0) {
-	    pixFinalize();
-		return 5;
-	}
 	if (texInitializeFile(&texture, "awesome.png") != 0) {
-	    depthFinalize(&buf);
 	    pixFinalize();
 		return 2;
 	}
@@ -148,6 +143,5 @@ int main() {
     pixRun();
     /* Clean up. */
     texFinalize(&texture);
-    depthFinalize(&buf);
     pixFinalize();
 }
