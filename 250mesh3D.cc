@@ -1,4 +1,4 @@
-
+using namespace std;
 
 
 /*** 3D mesh builders ***/
@@ -14,10 +14,10 @@ void mesh3DTrueNormal(
 	normal[0] = bMinusA[1]*cMinusA[2]-bMinusA[2]*cMinusA[1];
     normal[1] = bMinusA[2]*cMinusA[0]-bMinusA[0]*cMinusA[2];
     normal[2] = bMinusA[0]*cMinusA[1]-bMinusA[1]*cMinusA[0];
-	double l = 1./sqrt(normal[0]*normal[0]+normal[1]*normal[1]+normal[2]*normal[2]);
-	normal[0] *= l;
-	normal[1] *= l;
-	normal[2] *= l;
+	double l = hypot(normal[0], normal[1], normal[2]);
+	normal[0] /= l;
+	normal[1] /= l;
+	normal[2] /= l;
 }
 
 /* Assumes that attributes 0, 1, 2 are XYZ. Sets attributes n, n + 1, n + 2 to 
@@ -31,9 +31,9 @@ void mesh3DFlatNormals(Mesh<t,v,a> *mesh, int n) {
         b = mesh->vert[p[1]];
         c = mesh->vert[p[2]];
         mesh3DTrueNormal(a_, b, c, normal);
-		std::copy_n(normal, 3, &a_[n]);
-		std::copy_n(normal, 3, &b[n]);
-		std::copy_n(normal, 3, &c[n]);
+		ranges::copy(normal, &a_[n]);
+		ranges::copy(normal, &b[n]);
+		ranges::copy(normal, &c[n]);
     }
 }
 
@@ -55,9 +55,8 @@ void mesh3DSmoothNormals(Mesh<t,v,A> *mesh, int n) {
     }
     /* Normalize the normals. */
     for (double *a : mesh->vert) {
-        int m = 0;
-        for(int i = 0; i < 3; ++i) m += a[n+i] * a[n+i];
-        if(m) for(int i = 0; i < 3; ++i) a[n+i] /= sqrt(m);
+        double l = hypot(a[n], a[n+1], a[n+2]);
+        for(int i = 0; i < 3; ++i) a[n+i] /= l;
     }
 }
 
@@ -358,10 +357,10 @@ void Build(double spacing, array<array<double, size>, size> data) {
     int a, b, c, d;
     double diffSWNE, diffSENW;
         /* Build the vertices with normals set to 0. */
-        for (i = 0; i < size; i += 1)
-            for (j = 0; j < size; j += 1) {
-                SetVertex(i * size + j, {i * spacing, j * spacing, data[i][j], 
-                    (double)i, (double)j, 0., 0., 0.});
+        for (i = 0; i < size; ++i)
+            for (j = 0; j < size; ++j) {
+                ranges::copy(to_array({i * spacing, j * spacing, data[i][j], 
+                    (double)i, (double)j, 0., 0., 0.}), vert[i * size + j]);
             }
         /* Build the triangles. */
         for (i = 0; i < size - 1; ++i)

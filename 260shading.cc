@@ -4,7 +4,7 @@ struct shaShading {
     int texNum;
 	int varyDim;
     void (*shadeFragment) (
-        int, const double[], int, const texTexture*[], 
+        int, const double[], int, Texture&, 
         int, const double[], double(&)[4]);
     void (*shadeVertex) (
         int, const double[], int, const double[], 

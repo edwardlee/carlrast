@@ -21,48 +21,24 @@ void SetTriangle(int n, int i, int j, int k) {
 	}
 }
 
-/* Returns a pointer to the trith triangle. For example:
-	int *triangle13 = GetTrianglePointer(&, 13);
-	printf("%d, %d, %d\n", triangle13[0], triangle13[1], triangle13[2]); */
-int* GetTrianglePointer(int n) {
-	if (0 <= n && n < t)
-		return tri[n];
-	else
-		return NULL;
-}
-
 /* Sets the vertth vertex to have attributes attr. */
-void SetVertex(int n, const double (&attr)[]) {
-	int k;
-	if (0 <= n && n < v)
-		for (k = 0; k < a; k += 1)
-			vert[n][k] = attr[k];
+void SetVertex(int n, double (&&attr)[a]) {
+	ranges::copy(attr, vert[n]);
 }
-
-/* Returns a pointer to the vertth vertex. For example:
-	double *vertex13 = GetVertexPointer(&, 13);
-	printf("x = %f, y = %f\n", vertex13[0], vertex13[1]); */
-double* GetVertexPointer(int n) {
-	if (0 <= n && n < v)
-		return vert[n];
-	else
-		return NULL;
-}
-
 
 /*** Rendering ***/
 void lerp
 	(int varyDim, const double va[], const double vb[], double (&vn)[]) {
 	double T = (va[2] + va[3])/(va[2] + va[3] - vb[2] - vb[3]);
 	for(int i = 0; i < varyDim; ++i)
-		vn[i] = va[i] + T * (vb[i] - va[i]);
+		vn[i] = std::lerp(va[i], vb[i], T);
 }
 
 /* Renders the . If the  and the shading have differing values for 
 a, then prints an error message and does not render anything. */
 void Render(
-        depthBuffer *buf, const double viewport[4][4], const shaShading *sha, 
-	const double (&unif)[], const texTexture *tex[]) {
+        Depth buf, const double viewport[4][4], const shaShading *sha, 
+	const double (&unif)[], Texture &tex) {
     if(a != sha->attrDim) {
         fprintf(stderr, "expected as to match\n");
         return;

@@ -3,7 +3,7 @@
 
 void triRender(
         const shaShading *sha, Depth buf, const double (&unif)[], 
-        const texTexture *tex[], const double (&a)[], const double (&b)[], 
+        Texture &tex, const double (&a)[], const double (&b)[], 
         const double (&c)[]) {
     // 28.4 fixed-point coordinates, compare c vs cpp round asm with ofast
     const int Y1 = round(16. * a[1]);

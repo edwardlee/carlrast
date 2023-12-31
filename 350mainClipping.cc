@@ -27,22 +27,20 @@ void shadeVertex(
 }
 
 void shadeFragment(
-        int unifDim, const double unif[], int texNum, const texTexture *tex[], 
+        int unifDim, const double unif[], int texNum, Texture &tex, 
         int varyDim, const double vary[], double (&rgbd)[4]) {
-	texSample(tex[0], 0., vary[TV]/vary[Q], rgbd);
+	tex.Sample(0., vary[TV]/vary[Q], rgbd);
 	rgbd[0] = rgbd[1] * 0.2 + 0.8;
 	rgbd[1] = rgbd[1] * 0.2 + 0.5;
     // rgbd[2] = 0.6;
-	double intensity = vary[PV] / sqrt(vary[NV]*vary[NV] + vary[OV]*vary[OV] + vary[PV]*vary[PV]);
+	double intensity = vary[PV] / vary[Q];
     for(int i = 0; i < 3; ++i) rgbd[i] *= intensity;
 	rgbd[3] = vary[Z];
 }
 
 Depth buf(512, 512);
 shaShading sha;
-texTexture texture;
-const texTexture *textures[1] = {&texture};
-const texTexture **tex = textures;
+Texture tex;
 Landscape<LANDSIZE> landMesh;
 double unif[16];
 double viewport[4][4];
@@ -60,10 +58,7 @@ void handleKeyUp(
         int key, int shiftIsDown, int controlIsDown, int altOptionIsDown, 
         int superCommandIsDown) {
 	if (key == GLFW_KEY_ENTER) {
-		if (texture.filtering == texLINEAR)
-			texSetFiltering(&texture, texNEAREST);
-		else
-			texSetFiltering(&texture, texLINEAR);
+		tex.filtering ^= 1;
 	} else if (key == GLFW_KEY_P) {
 	    cam.projectionType ^= 1;
         cam.SetFrustum(M_PI / 6., 10., 10., 512, 512);
@@ -109,7 +104,7 @@ int main() {
     /* Marshal resources. */
 	if (pixInitialize(512, 512, "Landscape") != 0)
 		return 1;
-	if (texInitializeFile(&texture, "awesome.png") != 0) {
+	if (tex.InitializeFile("awesome.png") != 0) {
 	    pixFinalize();
 		return 2;
 	}
@@ -119,9 +114,9 @@ int main() {
 	    v[TA] = v[Z];
 	}
 	/* Configure texture. */
-    texSetFiltering(&texture, texNEAREST);
-    texSetLeftRight(&texture, texREPEAT);
-    texSetTopBottom(&texture, texREPEAT);
+    tex.filtering = texNEAREST;
+    tex.leftRight = texREPEAT;
+    tex.topBottom = texREPEAT;
     /* Configure shader program. */
     sha.unifDim = 16;
     sha.attrDim = 3 + 2 + 3;
@@ -142,6 +137,6 @@ int main() {
     pixSetTimeStepHandler(handleTimeStep);
     pixRun();
     /* Clean up. */
-    texFinalize(&texture);
+    tex.Finalize();
     pixFinalize();
 }
