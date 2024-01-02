@@ -30,9 +30,6 @@ void shadeFragment(
         int unifDim, const double unif[], int texNum, Texture &tex, 
         int varyDim, const double vary[], double (&rgbd)[4]) {
 	tex.Sample(0., vary[TV]/vary[Q], rgbd);
-	rgbd[0] = rgbd[1] * 0.2 + 0.8;
-	rgbd[1] = rgbd[1] * 0.2 + 0.5;
-    // rgbd[2] = 0.6;
 	double intensity = vary[PV] / vary[Q];
     for(int i = 0; i < 3; ++i) rgbd[i] *= intensity;
 	rgbd[3] = vary[Z];
@@ -40,7 +37,7 @@ void shadeFragment(
 
 Depth buf(512, 512);
 shaShading sha;
-Texture tex;
+Texture tex(1, 2, 2, {0.8, 0.5});
 Landscape<LANDSIZE> landMesh;
 double unif[16];
 double viewport[4][4];
@@ -104,15 +101,12 @@ int main() {
     /* Marshal resources. */
 	if (pixInitialize(512, 512, "Landscape") != 0)
 		return 1;
-	if (tex.InitializeFile("awesome.png") != 0) {
-	    pixFinalize();
-		return 2;
-	}
     landMesh.Build(1., land.data);
 	/* Manually re-assign texture coordinates. */
 	for (auto &&v : landMesh.vert) {
 	    v[TA] = v[Z];
 	}
+    tex.SetTexel(0, 0, {1., 0.7});
 	/* Configure texture. */
     tex.filtering = texNEAREST;
     tex.leftRight = texREPEAT;
@@ -137,6 +131,5 @@ int main() {
     pixSetTimeStepHandler(handleTimeStep);
     pixRun();
     /* Clean up. */
-    tex.Finalize();
     pixFinalize();
 }

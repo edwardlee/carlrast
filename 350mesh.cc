@@ -22,7 +22,7 @@ void SetTriangle(int n, int i, int j, int k) {
 }
 
 /* Sets the vertth vertex to have attributes attr. */
-void SetVertex(int n, double (&&attr)[a]) {
+void SetVertex(int n, const double (&attr)[a]) {
 	ranges::copy(attr, vert[n]);
 }
 

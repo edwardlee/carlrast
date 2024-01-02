@@ -349,9 +349,6 @@ double zs[3][3] = {
 int error = mesh3DInitializeLandscape(&mesh, 3, 20., (double *)zs); */
 template<size_t size>
 struct Landscape : public Mesh<2 * (size - 1) * (size - 1), size * size, 8> {
-using Mesh<2 * (size - 1) * (size - 1), size * size>::SetVertex;
-using Mesh<2 * (size - 1) * (size - 1), size * size>::vert;
-using Mesh<2 * (size - 1) * (size - 1), size * size>::SetTriangle;
 void Build(double spacing, array<array<double, size>, size> data) {
     int i, j;
     int a, b, c, d;
@@ -360,7 +357,7 @@ void Build(double spacing, array<array<double, size>, size> data) {
         for (i = 0; i < size; ++i)
             for (j = 0; j < size; ++j) {
                 ranges::copy(to_array({i * spacing, j * spacing, data[i][j], 
-                    (double)i, (double)j, 0., 0., 0.}), vert[i * size + j]);
+                    (double)i, (double)j, 0., 0., 0.}), this->vert[i * size + j]);
             }
         /* Build the triangles. */
         for (i = 0; i < size - 1; ++i)
@@ -370,16 +367,14 @@ void Build(double spacing, array<array<double, size>, size> data) {
                 b = (i + 1) * size + j;
                 c = (i + 1) * size + (j + 1);
                 d = i * size + (j + 1);
-                diffSWNE = abs(vert[a][2] - 
-                    vert[c][2]);
-                diffSENW = abs(vert[b][2] - 
-                    vert[d][2]);
+                diffSWNE = abs(this->vert[a][2] - this->vert[c][2]);
+                diffSENW = abs(this->vert[b][2] - this->vert[d][2]);
                 if (diffSENW < diffSWNE) {
-                    SetTriangle(index, d, a, b);
-                    SetTriangle(index + 1, b, c, d);
+                    this->SetTriangle(index, d, a, b);
+                    this->SetTriangle(index + 1, b, c, d);
                 } else {
-                    SetTriangle(index, a, b, c);
-                    SetTriangle(index + 1, a, c, d);
+                    this->SetTriangle(index, a, b, c);
+                    this->SetTriangle(index + 1, a, c, d);
                 }
             }
         /* Set the normals. */

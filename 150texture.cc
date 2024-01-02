@@ -1,3 +1,6 @@
+#include <iostream>
+#include <span>
+using namespace std;
 /*** Public: For header file ***/
 
 /* These are constants that are set at compile time. For example, whenever the 
@@ -23,7 +26,7 @@ struct Texture {
     int filtering;      /* texLINEAR or texNEAREST */
     int topBottom;      /* texREPEAT or texCLIP */
     int leftRight;      /* texREPEAT or texCLIP */
-    double *data;       /* width * height * texelDim doubles, row-major order */
+    span<double> data;       /* width * height * texelDim doubles, row-major order */
 
 
 
@@ -46,19 +49,12 @@ void ClearTexels(const double texel[]) {
 color. The width and height do not have to be powers of 2. Returns 0 if no 
 error occurred. The user must remember to call texFinalize when finished with 
 the texture. */
-int InitializeSolid(
-        int width, int height, int texelDim, 
-        const double texel[]) {
-    width = width;
-    height = height;
-    texelDim = texelDim;
-    data = (double *)malloc(width * height * texelDim * sizeof(double));
-    if (data == NULL) {
-        fprintf(stderr, "error: texInitializeSolid: malloc failed\n");
-        return 1;
-    }
+Texture(int w, int h, int d, const double (&texel)[]) {
+    width = w;
+    height = h;
+    texelDim = d;
+    data = span(new double[width * height * texelDim], width * height * texelDim);
     ClearTexels(texel);
-    return 0;
 }
 
 /* Initializes a texTexture struct by loading an image from a file. Many image 
@@ -68,34 +64,19 @@ must remember to call texFinalize when finished with the texture. */
 /* WARNING: Currently there is a weird behavior, in which some image files show 
 up with their rows and columns switched, so that their width and height are 
 flipped. If that's happening with your image, then use a different image. */
-int InitializeFile(const char *path) {
+Texture(const char *path) {
     /* Use the STB image library to load the file as unsigned chars. */
-    unsigned char *rawData;
-    int x, y, z, newInd, oldInd;
-    rawData = stbi_load(path, &(width), &(height), &(texelDim), 
-        0);
-    if (rawData == NULL) {
-        fprintf(stderr, "error: texInitializeFile: failed to load image %s\n", 
-            path);
-        fprintf(stderr, "    with STB Image reason: %s\n", stbi_failure_reason());
-        return 2;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *rawData = stbi_load(path, &width, &height, &texelDim, 0);
+    if (!rawData) {
+        cerr << "error: texInitializeFile: failed to load image " << path << endl
+            << "    with STB Image reason: " << stbi_failure_reason() << endl;
+        return;
     }
-    data = (double *)malloc((width * height) * texelDim * sizeof(double));
-    if (data == NULL) {
-        fprintf(stderr, "error: texInitializeFile: malloc failed\n");
-        stbi_image_free(rawData);
-        return 1;
-    }
-    /* STB Image starts in the upper-left, while I want the lower-left. */
-    for (x = 0; x < width; x += 1)
-        for (y = 0; y < height; y += 1) {
-            newInd = texelDim * (x + width * y);
-            oldInd = texelDim * (x + width * (height - 1 - y));
-            for (z = 0; z < texelDim; z += 1)
-                data[newInd + z] = rawData[oldInd + z] / 255.0;
-        }
+    data = span(new double[width * height * texelDim], width * height * texelDim);
+    for (int i = 0; double &d : data)
+        d = rawData[i++] / 255.;
     stbi_image_free(rawData);
-    return 0;
 }
 
 /*
@@ -120,18 +101,12 @@ void GetTexel(const int s, int t, double (&texel)[]) {
 /* Sets a single texel within the texture. For details, see texGetTexel. */
 void SetTexel(int x, int y, const double (&texel)[]) {
     if (0 <= x && x < width && 0 <= y && y < height
-            && data != NULL) {
+            && data.data()) {
         int index, k;
         index = texelDim * (x + width * y);
         for (k = 0; k < texelDim; k += 1)
             data[index + k] = texel[k];
     }
-}
-
-/* Deallocates the resources backing the texture. This function must be called 
-when the user is finished using the texture. */
-void Finalize() {
-    free(data);
 }
 
 
@@ -170,7 +145,7 @@ void Sample(double s, double t, double (&sample)[]) {
     if (filtering == texNEAREST)
         GetTexel(round(u), round(v), sample);
     else {
-	    int d = texelDim;	
+	    int d = texelDim;
         // 0,0 , 0,1 , 1,0 , 1,1	
         double ff[d]; double fc[d]; double cf[d]; double cc[d];	
         GetTexel(u, v, ff);	
