@@ -356,8 +356,8 @@ void Build(double spacing, array<array<double, size>, size> data) {
         /* Build the vertices with normals set to 0. */
         for (i = 0; i < size; ++i)
             for (j = 0; j < size; ++j) {
-                ranges::copy(to_array({i * spacing, j * spacing, data[i][j], 
-                    (double)i, (double)j, 0., 0., 0.}), this->vert[i * size + j]);
+                ranges::copy((double(&&)[8]){i * spacing, j * spacing, data[i][j], 
+                    (double)i, (double)j}, this->vert[i * size + j]);
             }
         /* Build the triangles. */
         for (i = 0; i < size - 1; ++i)
@@ -378,6 +378,6 @@ void Build(double spacing, array<array<double, size>, size> data) {
                 }
             }
         /* Set the normals. */
-        mesh3DFlatNormals(this, 5);
+        mesh3DSmoothNormals(this, 5);
 }
 };

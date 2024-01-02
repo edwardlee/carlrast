@@ -1,5 +1,6 @@
 #include <iostream>
 #include <span>
+#include <algorithm>
 using namespace std;
 /*** Public: For header file ***/
 
@@ -23,9 +24,9 @@ your program cannot change its value. We use such constants to avoid having
 struct Texture {
     int width, height;  /* do not have to be powers of 2 */
     int texelDim;       /* e.g. 3 for RGB textures */
-    int filtering;      /* texLINEAR or texNEAREST */
-    int topBottom;      /* texREPEAT or texCLIP */
-    int leftRight;      /* texREPEAT or texCLIP */
+    char filtering;      /* texLINEAR or texNEAREST */
+    char topBottom;      /* texREPEAT or texCLIP */
+    char leftRight;      /* texREPEAT or texCLIP */
     span<double> data;       /* width * height * texelDim doubles, row-major order */
 
 
@@ -37,23 +38,22 @@ struct Texture {
 /* Sets all texels within the texture. Assumes that the texture has already 
 been initialized. Assumes that texel has the same texel dimension as the 
 texture. */
-void ClearTexels(const double texel[]) {
-    int index, bound, k;
-    bound = texelDim * width * height;
-    for (index = 0; index < bound; index += texelDim)
-        for (k = 0; k < texelDim; k += 1)
-            data[index + k] = texel[k];
+template<size_t D>
+void ClearTexels(double (&texel)[D]) {
+    for (int i = 0; i < data.size(); i += texelDim)
+        ranges::copy(texel, &data[i]);
 }
 
 /* Initializes a texTexture struct to a given width and height and a solid 
 color. The width and height do not have to be powers of 2. Returns 0 if no 
 error occurred. The user must remember to call texFinalize when finished with 
 the texture. */
-Texture(int w, int h, int d, const double (&texel)[]) {
+template<size_t D>
+Texture(int w, int h, int d, double (&&texel)[D]) {
     width = w;
     height = h;
     texelDim = d;
-    data = span(new double[width * height * texelDim], width * height * texelDim);
+    data = span(new double[w * h * d], w * h * d);
     ClearTexels(texel);
 }
 
@@ -99,14 +99,11 @@ void GetTexel(const int s, int t, double (&texel)[]) {
 }
 
 /* Sets a single texel within the texture. For details, see texGetTexel. */
-void SetTexel(int x, int y, const double (&texel)[]) {
-    if (0 <= x && x < width && 0 <= y && y < height
-            && data.data()) {
-        int index, k;
-        index = texelDim * (x + width * y);
-        for (k = 0; k < texelDim; k += 1)
-            data[index + k] = texel[k];
-    }
+template<size_t D>
+void SetTexel(int x, int y, const double (&texel)[D]) {
+    int index = texelDim * (x + width * y);
+    if (index < data.size())
+        ranges::copy(texel, begin(data) + index);
 }
 
 
@@ -124,47 +121,43 @@ void Sample(double s, double t, double (&sample)[]) {
     if (leftRight == texREPEAT)
         s -= floor(s);
     else {
-        [[unlikely]] if (s < 0.0)
-            s = 0.0;
-        else if (s > 1.0)
-            s = 1.0;
+        [[unlikely]] if (s < 0.)
+            s = 0.;
+        else if (s > 1.)
+            s = 1.;
     }
     if (topBottom == texREPEAT)
         t -= floor(t);
     else {
-        if (t < 0.0)
-            t = 0.0;
-        else if (t > 1.0)
-            t = 1.0;
+        if (t < 0.)
+            t = 0.;
+        else if (t > 1.)
+            t = 1.;
     }
     /* Scale to image space. */
-    double u, v;
-    u = s * (width - 1);
-    v = t * (height - 1);
+    double u = s * (width - 1);
+    double v = t * (height - 1);
     /* Handle nearest-neighbor vs. linear filtering. */
     if (filtering == texNEAREST)
         GetTexel(round(u), round(v), sample);
     else {
-	    int d = texelDim;
         // 0,0 , 0,1 , 1,0 , 1,1	
-        double ff[d]; double fc[d]; double cf[d]; double cc[d];	
-        GetTexel(u, v, ff);	
+        double ff[texelDim], fc[texelDim], cf[texelDim], cc[texelDim];
+        GetTexel(u, v, ff); 
         GetTexel(u, ceil(v), fc);	
         GetTexel(ceil(u), v, cf);	
         GetTexel(ceil(u), ceil(v), cc);	
         // m for mantissa	
         double um = u - floor(u);	
         double vm = v - floor(v);	
-        // d for distance from corners of the unit square	
-        // 1 - is because closer points have greater weight	
-        double ffd = 1 - sqrt(um * um + vm * vm);	
-        double fcd = 1 - sqrt(um * um + (1-vm) * (1-vm));	
-        double cfd = 1 - sqrt((1-um) * (1-um) + vm * vm);	
-        double ccd = 1 - sqrt((1-um) * (1-um) + (1-vm) * (1-vm));	
-        // Take a weighted average for optimal smoothness	
+        // 1 - is because closer points have greater weight 
+        for(double &n : ff) n *= (1-um) * (1-vm);
+        for(double &n : fc) n *= (1-um) * vm;
+        for(double &n : cf) n *= um * (1-vm);
+        for(double &n : cc) n *= um * vm;
+        // Take a weighted average for optimal smoothness
         for (int k = 0; k < texelDim; ++k)	
-            sample[k] = (ff[k]*ffd+fc[k]*fcd+cf[k]*cfd+cc[k]*ccd)/	
-            (ffd+fcd+cfd+ccd);
+            sample[k] = ff[k] + fc[k] + cf[k] + cc[k];
     }
 }
 
