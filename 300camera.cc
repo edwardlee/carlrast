@@ -9,7 +9,7 @@ struct Camera {
 			double left, right, bottom, top, far, near;
 		};
 	};
-	int projectionType;
+	bool projectionType;
 	Isometry iso;
 
 /* Builds a 4x4 matrix representing orthographic projection with a boxy viewing 

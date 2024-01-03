@@ -18,17 +18,15 @@ enum Vary {W=3, SV, TV, NV, OV, PV, Q};
 
 /* The first four entries of vary are assumed to be X, Y, Z, W. */
 void shadeVertex(
-        int unifDim, const double unif[], int attrDim, const double attr[], 
-        int varyDim, double (&vary)[]) {
+        const double unif[], const double attr[], double (&vary)[]) {
 	double attrHomog[4] = {attr[X], attr[Y], attr[Z], 1.};
-	mat441Multiply((double(*)[4])(unif), attrHomog, (double(&)[4])vary);
+	mat441Multiply((double(*&&)[4])(unif), attrHomog, (double(&)[4])vary);
 	copy_n(&attr[SA], 5, &vary[SV]);
     vary[Q] = 1.;
 }
 
 void shadeFragment(
-        int unifDim, const double unif[], int texNum, Texture &tex, 
-        int varyDim, const double vary[], double (&rgbd)[4]) {
+        const double unif[], Texture &tex, const double vary[], double (&rgbd)[4]) {
 	tex.Sample(0., vary[TV]/vary[Q], rgbd);
 	double intensity = vary[PV] / vary[Q];
     for(int i = 0; i < 3; ++i) rgbd[i] *= intensity;
@@ -36,7 +34,7 @@ void shadeFragment(
 }
 
 Depth buf(512, 512);
-shaShading sha;
+Shading sha{16, 8, 1, 10, shadeFragment, shadeVertex};
 Texture tex(1, 2, 2, {0.8, 0.5});
 Landscape<LANDSIZE> landMesh;
 double unif[16];
@@ -48,7 +46,7 @@ void render() {
 	pixClearRGB(0.6, 0.2, 0.1);
 	buf.Clear(1.);
 	cam.GetProjectionInverseIsometry((double(&)[4][4])unif);
-	landMesh.Render(buf, viewport, &sha, unif, tex);
+	landMesh.Render(buf, viewport, sha, unif, tex);
 }
 
 void handleKeyUp(
@@ -99,25 +97,16 @@ int main() {
 	for (int i = 0; i < 4; ++i)
 		land.Bump(uid(land.gen), uid(land.gen), 5., 1.);
     /* Marshal resources. */
-	if (pixInitialize(512, 512, "Landscape") != 0)
+	if (pixInitialize(512, 512, "Landscape"))
 		return 1;
     landMesh.Build(1., land.data);
 	/* Manually re-assign texture coordinates. */
-	for (auto &&v : landMesh.vert) {
+	for (auto &&v : landMesh.vert)
 	    v[TA] = v[Z];
-	}
     tex.SetTexel(0, 0, {1., 0.7});
 	/* Configure texture. */
-    tex.filtering = texNEAREST;
-    tex.leftRight = texREPEAT;
-    tex.topBottom = texREPEAT;
-    /* Configure shader program. */
-    sha.unifDim = 16;
-    sha.attrDim = 3 + 2 + 3;
-    sha.varyDim = 4 + 2 + 3 + 1;
-    sha.shadeVertex = shadeVertex;
-    sha.shadeFragment = shadeFragment;
-    sha.texNum = 1;
+    tex.filtering = NEAREST;
+    tex.topBottom = REPEAT;
     /* Configure viewport and camera. */
     mat44Viewport(512, 512, viewport);
     cam.projectionType = PERSPECTIVE;

@@ -9,10 +9,8 @@ compiler sees 'texLINEAR', it will substitute '0'. Let me emphasize: texLINEAR
 is not a variable. It does not occupy any memory in your running program, and 
 your program cannot change its value. We use such constants to avoid having 
 'magic numbers' sprinkled throughout our code. */
-#define texLINEAR 0
-#define texNEAREST 1
-#define texREPEAT 2
-#define texCLIP 3
+enum Filter {LINEAR, NEAREST};
+enum Edge {REPEAT, CLIP};
 
 
 /*** Private ***/
@@ -24,9 +22,9 @@ your program cannot change its value. We use such constants to avoid having
 struct Texture {
     int width, height;  /* do not have to be powers of 2 */
     int texelDim;       /* e.g. 3 for RGB textures */
-    char filtering;      /* texLINEAR or texNEAREST */
-    char topBottom;      /* texREPEAT or texCLIP */
-    char leftRight;      /* texREPEAT or texCLIP */
+    bool filtering;      /* texLINEAR or texNEAREST */
+    bool topBottom;      /* texREPEAT or texCLIP */
+    bool leftRight;      /* texREPEAT or texCLIP */
     span<double> data;       /* width * height * texelDim doubles, row-major order */
 
 
@@ -64,10 +62,10 @@ must remember to call texFinalize when finished with the texture. */
 /* WARNING: Currently there is a weird behavior, in which some image files show 
 up with their rows and columns switched, so that their width and height are 
 flipped. If that's happening with your image, then use a different image. */
-Texture(const char *path) {
+Texture(string_view path) {
     /* Use the STB image library to load the file as unsigned chars. */
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *rawData = stbi_load(path, &width, &height, &texelDim, 0);
+    unsigned char *rawData = stbi_load(path.data(), &width, &height, &texelDim, 0);
     if (!rawData) {
         cerr << "error: texInitializeFile: failed to load image " << path << endl
             << "    with STB Image reason: " << stbi_failure_reason() << endl;
@@ -118,7 +116,7 @@ initialized. Assumes that sample has been allocated with (at least) texelDim
 doubles. Places the sampled texel into sample. */
 void Sample(double s, double t, double (&sample)[]) {
     /* Handle clipping vs. repeating. */
-    if (leftRight == texREPEAT)
+    if (leftRight == REPEAT)
         s -= floor(s);
     else {
         [[unlikely]] if (s < 0.)
@@ -126,7 +124,7 @@ void Sample(double s, double t, double (&sample)[]) {
         else if (s > 1.)
             s = 1.;
     }
-    if (topBottom == texREPEAT)
+    if (topBottom == REPEAT)
         t -= floor(t);
     else {
         if (t < 0.)
@@ -138,7 +136,7 @@ void Sample(double s, double t, double (&sample)[]) {
     double u = s * (width - 1);
     double v = t * (height - 1);
     /* Handle nearest-neighbor vs. linear filtering. */
-    if (filtering == texNEAREST)
+    if (filtering == NEAREST)
         GetTexel(round(u), round(v), sample);
     else {
         // 0,0 , 0,1 , 1,0 , 1,1	

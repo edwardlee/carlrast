@@ -3,7 +3,7 @@
 using namespace std;
 
 struct Depth : span<double> {
-	size_t width, height;
+	int width, height;
 
 	Depth(size_t width, size_t height)
 		: span(new double[width * height], width* height), width(width), height(height) {}

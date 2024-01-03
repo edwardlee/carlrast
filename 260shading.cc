@@ -1,12 +1,10 @@
-struct shaShading {
+struct Shading {
     int unifDim;
     int attrDim;
     int texNum;
 	int varyDim;
     void (*shadeFragment) (
-        int, const double[], int, Texture&, 
-        int, const double[], double(&)[4]);
+        const double[], Texture&, const double[], double(&)[4]);
     void (*shadeVertex) (
-        int, const double[], int, const double[], 
-        int, double(&)[]);
+        const double[], const double[], double(&)[]);
 };
