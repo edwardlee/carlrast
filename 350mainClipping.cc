@@ -21,7 +21,8 @@ void shadeVertex(
         const double unif[], const double attr[], double (&vary)[]) {
 	double attrHomog[4] = {attr[X], attr[Y], attr[Z], 1.};
 	mat441Multiply((double(*&&)[4])(unif), attrHomog, (double(&)[4])vary);
-	copy_n(&attr[SA], 5, &vary[SV]);
+	vary[TV] = attr[TA];
+	vary[PV] = attr[PA];
     vary[Q] = 1.;
 }
 
@@ -29,7 +30,7 @@ void shadeFragment(
         const double unif[], Texture &tex, const double vary[], double (&rgbd)[4]) {
 	tex.Sample(0., vary[TV]/vary[Q], rgbd);
 	double intensity = vary[PV] / vary[Q];
-    for(int i = 0; i < 3; ++i) rgbd[i] *= intensity;
+    for(int i = 0; i < 2; ++i) rgbd[i] *= intensity;
 	rgbd[3] = vary[Z];
 }
 
@@ -49,9 +50,7 @@ void render() {
 	landMesh.Render(buf, viewport, sha, unif, tex);
 }
 
-void handleKeyUp(
-        int key, int shiftIsDown, int controlIsDown, int altOptionIsDown, 
-        int superCommandIsDown) {
+void handleKeyUp(int key) {
 	if (key == GLFW_KEY_ENTER) {
 		tex.filtering ^= 1;
 	} else if (key == GLFW_KEY_P) {
@@ -60,9 +59,7 @@ void handleKeyUp(
 	}
 }
 
-void handleKeyDownAndRepeat(
-        int key, int shiftIsDown, int controlIsDown, int altOptionIsDown, 
-        int superCommandIsDown) {
+void handleKeyDownAndRepeat(int key) {
     double *position = cam.iso.translation;
     if (key == GLFW_KEY_W) {
         position[0] += cos(angle);
@@ -88,6 +85,8 @@ void handleTimeStep(double oldTime, double newTime) {
 }
 
 int main() {
+	if (pixInitialize(512, 512, "Landscape"))
+		return 1;
     /* Randomly generate a grid of elevation data. */
     Land land;
     for (double m = 0.56; m <= 1.; m += 0.04)
@@ -97,8 +96,6 @@ int main() {
 	for (int i = 0; i < 4; ++i)
 		land.Bump(uid(land.gen), uid(land.gen), 5., 1.);
     /* Marshal resources. */
-	if (pixInitialize(512, 512, "Landscape"))
-		return 1;
     landMesh.Build(1., land.data);
 	/* Manually re-assign texture coordinates. */
 	for (auto &&v : landMesh.vert)

@@ -55,11 +55,12 @@ void triRender(
     DY12 <<= 4;
     DY23 <<= 4;
     DY31 <<= 4;
-
+    int index = 3 * (miny * buf.width + minx);
     for(int y = miny; y < maxy; ++y) {
         int CX1 = CY1;
         int CX2 = CY2;
         int CX3 = CY3;
+        int ind = index;
         for(int x = minx; x < maxx; ++x) {
             if(CX1 > 0 && CX2 > 0 && CX3 > 0) {
 				double attr[sha.varyDim];
@@ -68,16 +69,18 @@ void triRender(
 				double rgbd[4];
 				sha.shadeFragment(unif, tex, attr, rgbd);
                 if(rgbd[3] < buf[y][x]) {
-                    pixSetRGB(x, y, rgbd[0], rgbd[1], rgbd[2]);
+                    pixSetRGB(ind, rgbd);
                     buf[y][x] = rgbd[3];
                 }
             }
             CX1 -= DY12;
             CX2 -= DY23;
             CX3 -= DY31;
+            ind += 3;
         }
         CY1 += DX12;
         CY2 += DX23;
         CY3 += DX31;
+        index += 3 * buf.width;
     }
 }

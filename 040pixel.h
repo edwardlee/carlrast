@@ -41,34 +41,16 @@ called, pixInitialize must be called again, before any further use of the pixel
 system. */
 void pixFinalize(void);
 
-/* Returns the red channel of the pixel at coordinates (x, y). Coordinates are 
-relative to the lower left corner of the window. */
-double pixGetR(int x, int y);
-
-/* Returns the green channel of the pixel at coordinates (x, y). Coordinates 
-are relative to the lower left corner of the window. */
-double pixGetG(int x, int y);
-
-/* Returns the blue channel of the pixel at coordinates (x, y). Coordinates are 
-relative to the lower left corner of the window. */
-double pixGetB(int x, int y);
-
 /* Sets the pixel at coordinates (x, y) to the given RGB color. Coordinates are 
 relative to the lower left corner of the window. */
-void pixSetRGB(int x, int y, double red, double green, double blue);
+void pixSetRGB(int index, const double (&rgb)[4]);
 
 /* Sets all pixels to the given RGB color. */
 void pixClearRGB(double red, double green, double blue);
 
-/* data must be an array of width * height * 3 doubles, so that it can hold RGB 
-for each pixel in the window. This function copies the current window contents 
-out to the data array. Pixel (i, j) (measured from the lower left) ends up at 
-data[(i + width * j) * 3] and the two doubles following that. */
-void pixCopyRGB(double *data);
-
 /* Inverse of pixCopyRGB. This function pastes the contents of the data array 
 into the window. */
-void pixPasteRGB(double *data);
+void pixPasteRGB(double (&&data)[]);
 
 
 
@@ -83,51 +65,15 @@ where myKeyDownHandler is defined something like
 The key parameter is GLFW_KEY_A, GLFW_KEY_B, ..., or GLFW_KEY_UNKNOWN, which 
 are defined in GLFW/glfw3.h. The other parameters are flags describing the 
 state of the modifier keys when the key was pressed. */
-void pixSetKeyDownHandler(void (*handler)(int, int, int, int, int));
+void pixSetKeyDownHandler(void (*handler)(int));
 
 /* Sets a callback function for keys' being released. For details, see 
 pixSetKeyDownHandler. */
-void pixSetKeyUpHandler(void (*handler)(int, int, int, int, int));
+void pixSetKeyUpHandler(void (*handler)(int));
 
 /* Sets a callback function for keys' being held down. For details, see 
 pixSetKeyDownHandler. */
-void pixSetKeyRepeatHandler(void (*handler)(int, int, int, int, int));
-
-/* Sets a callback function for mouse buttons' being pressed. Invoked using 
-something like
-    pixSetMouseDownHandler(myMouseDownHandler);
-where myMouseDownHandler is defined something like 
-    void myMouseDownHandler(double x, double y, int button, int shiftIsDown, 
-        int controlIsDown, int altOptionIsDown, int superCommandIsDown);
-The x and y parameters are the position of the mouse relative to the lower left 
-corner of the window. The button parameter is GLFW_MOUSE_BUTTON_LEFT, 
-GLFW_MOUSE_BUTTON_RIGHT, or something like that. Those values are defined in 
-GLFW/glfw3.h. The other parameters are flags describing the state of the 
-modifier keys when the mouse button was pressed. */
-void pixSetMouseDownHandler(void (*handler)(double, double, int, int, int, int, 
-        int));
-
-/* Sets a callback function for mouse buttons' being released. For details, see 
-pixSetMouseDownHandler. */
-void pixSetMouseUpHandler(void (*handler)(double, double, int, int, int, int, 
-        int));
-
-/* Sets a callback function for the mouse's being moved. Invoked using 
-something like
-    pixSetMouseMoveHandler(myMouseMoveHandler);
-where myMouseMoveHandler is defined something like 
-    void myMouseMoveHandler(double x, double y);
-The x and y parameters are relative to the lower left corner of the window. */
-void pixSetMouseMoveHandler(void (*handler)(double, double));
-
-/* Sets a callback function for the mouse's being scrolled. Invoked using 
-something like 
-    pixSetMouseScrollHandler(myMouseScrollHandler);
-where myMouseScrollHandler is defined something like 
-    void myMouseScrollHandler(double xOffset, double yOffset);
-A vertical scroll wheel will always report 0.0 for xOffset. A scrolling gesture 
-on a trackpad might generate non-zero values for both xOffset and yOffset. */
-void pixSetMouseScrollHandler(void (*handler)(double, double));
+void pixSetKeyRepeatHandler(void (*handler)(int));
 
 /* Sets a callback function that fires once per animation frame, after all of 
 the user interface callbacks. Invoked using something like 

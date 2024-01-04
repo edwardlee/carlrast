@@ -1,6 +1,7 @@
 #include <iostream>
 #include <span>
 #include <algorithm>
+#include <filesystem>
 using namespace std;
 /*** Public: For header file ***/
 
@@ -44,8 +45,7 @@ void ClearTexels(double (&texel)[D]) {
 
 /* Initializes a texTexture struct to a given width and height and a solid 
 color. The width and height do not have to be powers of 2. Returns 0 if no 
-error occurred. The user must remember to call texFinalize when finished with 
-the texture. */
+error occurred. */
 template<size_t D>
 Texture(int w, int h, int d, double (&&texel)[D]) {
     width = w;
@@ -62,10 +62,10 @@ must remember to call texFinalize when finished with the texture. */
 /* WARNING: Currently there is a weird behavior, in which some image files show 
 up with their rows and columns switched, so that their width and height are 
 flipped. If that's happening with your image, then use a different image. */
-Texture(string_view path) {
+Texture(filesystem::path path) {
     /* Use the STB image library to load the file as unsigned chars. */
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *rawData = stbi_load(path.data(), &width, &height, &texelDim, 0);
+    unsigned char *rawData = stbi_load(path.c_str(), &width, &height, &texelDim, 0);
     if (!rawData) {
         cerr << "error: texInitializeFile: failed to load image " << path << endl
             << "    with STB Image reason: " << stbi_failure_reason() << endl;
@@ -75,6 +75,10 @@ Texture(string_view path) {
     for (int i = 0; double &d : data)
         d = rawData[i++] / 255.;
     stbi_image_free(rawData);
+}
+
+~Texture() {
+    delete[] ::data(data);
 }
 
 /*
