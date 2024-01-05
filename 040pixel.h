@@ -28,18 +28,18 @@ the window. They should be powers of 2. The name parameter is a string for the
 window's title. Returns an error code, which is 0 if no error occurred. Upon 
 success, don't forget to call pixFinalize later, to clean up the pixel system. 
 */
-int pixInitialize(int width, int height, const char *name);
+void pixInitialize(int width, int height, std::string_view name);
 
 /* Runs the event loop. First, any pending user events are processed by their 
 corresponding callbacks. Second, the time step callback is invoked. Third, if 
 any drawing has occurred, then the screen is updated to reflect that drawing. 
 When the user elects to quit, this function terminates. */
-void pixRun(void);
+void pixRun();
 
 /* Deallocates the resources supporting the window. After this function is 
 called, pixInitialize must be called again, before any further use of the pixel 
 system. */
-void pixFinalize(void);
+void pixFinalize();
 
 /* Sets the pixel at coordinates (x, y) to the given RGB color. Coordinates are 
 relative to the lower left corner of the window. */

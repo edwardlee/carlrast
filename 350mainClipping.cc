@@ -85,8 +85,7 @@ void handleTimeStep(double oldTime, double newTime) {
 }
 
 int main() {
-	if (pixInitialize(512, 512, "Landscape"))
-		return 1;
+	pixInitialize(512, 512, "Landscape");
     /* Randomly generate a grid of elevation data. */
     Land land;
     for (double m = 0.56; m <= 1.; m += 0.04)

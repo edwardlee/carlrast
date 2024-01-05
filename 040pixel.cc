@@ -2,17 +2,8 @@
 On Ubuntu, compile with...
     g++ -c 040pixel.cc -std=c++20 -Ofast -march=native
 ...and then link with a main program by for example...
-    cc main.c 040pixel.o -lglfw -lGL -lm -ldl
+    g++ 350mainClipping.cc -std=c++20 040pixel.o gl3w.o -lglfw -Ofast -march=native
 */
-
-/*
-There is some missing error checking in this code.
-
-I stopped revising midway through a revision that would allow width and height 
-to be other than powers of 2. The idea was to make the OpenGL texture have 
-width and height equal to pixPowerOfTwoCeil of the user width and height.
-*/
-
 
 
 /*** Private: infrastructure ***/
@@ -24,14 +15,12 @@ width and height equal to pixPowerOfTwoCeil of the user width and height.
 
 // Global variables.
 GLFWwindow *pixWindow;
-int pixWidth, pixHeight; // as initialized
+int pixWidth, pixHeight;
 GLuint pixTexture;
 std::span<float> pixPixels;
-bool pixNeedsRedisplay = true;
-GLuint pixAttrBuffer, pixTriBuffer;
+bool pixNeedsRedisplay = false;
 GLuint pixProgram;
-GLint pixUnifLoc, pixAttrLoc;
-double pixOldTime, pixNewTime;
+double pixNewTime;
 void (*pixUserKeyDownHandler)(int);
 void (*pixUserKeyUpHandler)(int);
 void (*pixUserKeyRepeatHandler)(int);
@@ -39,19 +28,18 @@ void (*pixUserTimeStepHandler)(double, double);
 
 GLuint pixBuildVertexFragmentProgram(const GLchar *vertexCode, 
     const GLchar *fragmentCode) {
-    GLuint vertexShader, fragmentShader, program;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexCode, 0);
-    // !!check for errors from glCompileShader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexCode, nullptr);
     glCompileShader(vertexShader);
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentCode, 0);
-    // !!check for errors from glCompileShader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentCode, nullptr);
     glCompileShader(fragmentShader);
-    program = glCreateProgram();
+    GLuint program = glCreateProgram();
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
     glLinkProgram(program);
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
     return program;
 }
 
@@ -60,7 +48,7 @@ GLuint pixBuildVertexFragmentProgram(const GLchar *vertexCode,
 /*** Private: GLFW handlers ***/
 
 void pixHandleError(int error, const char *description) {
-    std::cerr << "GLFW code " << error << ", message...\n"
+    std::cerr << "GLFW code " << error << "...\n"
         << description << std::endl;
 }
 
@@ -70,8 +58,7 @@ void pixHandleError(int error, const char *description) {
 // mods has bitwise masks for...
 //     GLFW_MOD_SHIFT, GLFW_MOD_CONTROL, GLFW_MOD_ALT, or GLFW_MOD_SUPER
 // ...which on macOS mean shift, control, option, command.
-void pixHandleKey(GLFWwindow *window, int key, int scancode, int action,
-        int mods) {
+void pixHandleKey(GLFWwindow *window, int key, int, int action, int) {
     if (action == GLFW_PRESS && pixUserKeyDownHandler)
         pixUserKeyDownHandler(key);
     if (action == GLFW_RELEASE && pixUserKeyUpHandler)
@@ -83,92 +70,46 @@ void pixHandleKey(GLFWwindow *window, int key, int scancode, int action,
 /*** Private: initializer ***/
 
 // Initialize the user interface and OpenGL.
-int pixInitGLFWGL3W(std::string_view name) {
+void pixInitGLFWGL3W(std::string_view name) {
     glfwSetErrorCallback(pixHandleError);
-    // !!error if glfwInit() returns GL_FALSE
     glfwInit();
     glfwWindowHint(GLFW_RESIZABLE, 0);
-    // This code is commented-out because 2.1 is the default.
-    // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     pixWindow = glfwCreateWindow(pixWidth, pixHeight, data(name), nullptr, nullptr);
     glfwMakeContextCurrent(pixWindow);
-    gl3wInit();
     glfwSetKeyCallback(pixWindow, pixHandleKey);
-    // The following code used to be...
-    //glViewport(0, 0, pixWidth, pixHeight);
     int width, height;
     glfwGetFramebufferSize(pixWindow, &width, &height);
+    gl3wInit();
     glViewport(0, 0, width, height);
-    return 0;
 }
 
 // Create the texture.
-int pixInitTexture() {
-    // !!error if malloc returns NULL
+void pixInitTexture() {
     pixPixels = std::span(new float[3 * pixWidth * pixHeight], 3 * pixWidth * pixHeight);
-    // If we were using OpenGL 4.5, we might do this.
     glCreateTextures(GL_TEXTURE_2D, 1, &pixTexture);
     glTextureStorage2D(pixTexture, 1, GL_RGB32F, pixWidth, pixHeight);
     glBindTextureUnit(0, pixTexture);
-    return glGetError();
 }
 
-/*
-// Vertex shader.
-uniform mat4 cameraMatrix;
-attribute vec4 attribs;
-varying vec2 texCoords;
-void main(){
-    gl_Position = cameraMatrix * vec4(attribs[0], attribs[1], 0., 1.);
-    texCoords = vec2(attribs[2], attribs[3]);
-}
-// Fragment shader.
-varying vec2 texCoords;
+GLchar vertexCode[] = R"(#version 450
+out vec2 texCoords;
+void main() {
+    vec2 vertices[3] = vec2[3](vec2(-1,-1), vec2(3,-1), vec2(-1, 3));
+    gl_Position = vec4(vertices[gl_VertexID], 0, 1);
+    texCoords = 0.5 * gl_Position.xy + vec2(0.5);
+})";
+GLchar fragmentCode[] = R"(#version 450
+out vec4 color;
+in vec2 texCoords;
 uniform sampler2D texture0;
-void main(){
-    gl_FragColor = texture2D(texture0, texCoords);
-}
-*/
+void main() {
+    color = texture(texture0, texCoords);
+})";
 // Build the shader program and leave it bound.
-int pixInitShaders() {
-    GLchar vertexCode[] = "uniform mat4 cameraMatrix;attribute vec4 attribs;varying vec2 texCoords;void main(){gl_Position = cameraMatrix * vec4(attribs[0], attribs[1], 0., 1.);texCoords = vec2(attribs[2], attribs[3]);}";
-    GLchar fragmentCode[] = "varying vec2 texCoords;uniform sampler2D texture0;void main(){gl_FragColor = texture2D(texture0, texCoords);}";
+void pixInitShaders() {    
     pixProgram = pixBuildVertexFragmentProgram(vertexCode, fragmentCode);
     glUseProgram(pixProgram);
-    // Load identifiers for sampler units, for some reason before validating.
-    glUniform1i(glGetUniformLocation(pixProgram, "texture0"), 0);
-    //!!validateShaderProgram(self.drawingProgram)
-    pixUnifLoc = glGetUniformLocation(pixProgram, "cameraMatrix");
-    pixAttrLoc = glGetAttribLocation(pixProgram, "attribs");
-    return 0;
 }
-
-// Make a rectangle from two triangles. Leave the OpenGL buffers bound.
-int pixInitMesh() {
-    float widthFrac = (float)pixWidth / pixWidth;
-    float heightFrac = (float)pixHeight / pixHeight;
-    GLfloat attributes[4 * 4] = {
-        0., 0., 0., 0.,
-        (float)pixWidth, 0., widthFrac, 0., 
-        (float)pixWidth, (float)pixHeight, widthFrac, heightFrac,
-        0., (float)pixHeight, 0., heightFrac};
-    GLushort triangles[2 * 3] = {0, 1, 2, 0, 2, 3};
-    glCreateBuffers(1, &pixAttrBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, pixAttrBuffer);
-    glNamedBufferData(pixAttrBuffer, 4 * 4 * sizeof(GLfloat),
-        (GLvoid *)attributes, GL_STATIC_DRAW);
-    glCreateBuffers(1, &pixTriBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pixTriBuffer);
-    glNamedBufferData(pixTriBuffer, 2 * 3 * sizeof(GLushort),
-        (GLvoid *)triangles, GL_STATIC_DRAW);
-    glVertexAttribPointer(pixAttrLoc, 4, GL_FLOAT, 0, 4 * sizeof(GLfloat), 0);
-    glEnableVertexAttribArray(pixAttrLoc);
-    return 0;
-}
-
-
 
 /*** Public: miscellaneous ***/
 
@@ -190,16 +131,14 @@ the window. They should be powers of 2. The name parameter is a string for the
 window's title. Returns an error code, which is 0 if no error occurred. Upon 
 success, don't forget to call pixFinalize later, to clean up the pixel system. 
 */
-int pixInitialize(int width, int height, const char *name) {
+void pixInitialize(int width, int height, std::string_view name) {
     pixWidth = width;
     pixHeight = height;
     pixInitGLFWGL3W(name);
     pixInitTexture();
     pixInitShaders();
-    pixInitMesh();
     std::cerr << "OpenGL " << glGetString(GL_VERSION) << ", GLSL "
     << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-    return 0;
 }
 
 /* Runs the event loop. First, any pending user events are processed by their 
@@ -209,23 +148,16 @@ When the user elects to quit, this function terminates. */
 void pixRun() {
     while (glfwWindowShouldClose(pixWindow) == GL_FALSE) {
         glfwPollEvents();
-        pixOldTime = pixNewTime;
+        double pixOldTime = pixNewTime;
         pixNewTime = glfwGetTime();
         if (pixUserTimeStepHandler)
             pixUserTimeStepHandler(pixOldTime, pixNewTime);
         if (pixNeedsRedisplay) {
-            // In OpenGL 4.5 we might do this.
+            pixNeedsRedisplay = false;
             glTextureSubImage2D(pixTexture, 0, 0, 0, pixWidth, 
                pixHeight, GL_RGB, GL_FLOAT, data(pixPixels));
-            GLfloat matrix[] = {
-                2.f / pixWidth, 0., 0., -1.,
-                0., 2.f / pixHeight, 0., -1.,
-                0., 0., -1., 0.,
-                0., 0., 0., 1.};
-            glUniformMatrix4fv(pixUnifLoc, 1, GL_TRUE, matrix);
-            glDrawElements(GL_TRIANGLES, 3 * 2, GL_UNSIGNED_SHORT, 0);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
             glfwSwapBuffers(pixWindow);
-            pixNeedsRedisplay = false;
         }
     }
 }
@@ -234,12 +166,6 @@ void pixRun() {
 called, pixInitialize must be called again, before any further use of the pixel 
 system. */
 void pixFinalize() {    
-    glDisableVertexAttribArray(pixAttrLoc);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glDeleteBuffers(1, &pixTriBuffer);
-    glDeleteBuffers(1, &pixAttrBuffer);
-    //glUseProgram(0);
     glDeleteProgram(pixProgram);
     glDeleteTextures(1, &pixTexture);
     delete[] pixPixels.data();
