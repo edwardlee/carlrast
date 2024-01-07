@@ -55,7 +55,8 @@ void handleKeyUp(int key) {
 		tex.filtering ^= 1;
 	} else if (key == GLFW_KEY_P) {
 	    cam.projectionType ^= 1;
-        cam.SetFrustum(M_PI / 6., 10., 10., 512, 512);
+        for(int i = 0; i < 4; ++i)
+            cam.projection[i] *= cam.projectionType ? 0.1 : 10.;
 	}
 }
 
@@ -100,12 +101,8 @@ int main() {
 	for (auto &&v : landMesh.vert)
 	    v[TA] = v[Z];
     tex.SetTexel(0, 0, {1., 0.7});
-	/* Configure texture. */
-    tex.filtering = NEAREST;
-    tex.topBottom = REPEAT;
     /* Configure viewport and camera. */
     mat44Viewport(512, 512, viewport);
-    cam.projectionType = PERSPECTIVE;
     cam.SetFrustum(M_PI / 6., 10., 10., 512, 512);
     double position[3] = {-5., -5., 20.};
     cam.LookFrom(position, M_PI * 0.6, angle);

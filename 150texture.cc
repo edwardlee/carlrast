@@ -10,7 +10,7 @@ compiler sees 'texLINEAR', it will substitute '0'. Let me emphasize: texLINEAR
 is not a variable. It does not occupy any memory in your running program, and 
 your program cannot change its value. We use such constants to avoid having 
 'magic numbers' sprinkled throughout our code. */
-enum Filter {LINEAR, NEAREST};
+enum Filter {NEAREST, LINEAR};
 enum Edge {REPEAT, CLIP};
 
 
@@ -94,10 +94,8 @@ handled in the code above.
 /* Gets a single texel within the texture. Assumes that texel has the same texel 
 dimension as the texture. Texel (s, t) = (0, 0) is in the lower left corner, 
 texel (width - 1, 0) is in the lower right corner, etc. */
-void GetTexel(const int s, int t, double (&texel)[]) {
-    int k;
-    for (k = 0; k < texelDim; k += 1)
-        texel[k] = data[(s + width * t) * texelDim + k];
+void GetTexel(int s, int t, double (&texel)[]) {
+    copy_n(&data[(s + width * t) * texelDim], texelDim, texel);
 }
 
 /* Sets a single texel within the texture. For details, see texGetTexel. */

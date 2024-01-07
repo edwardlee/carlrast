@@ -63,7 +63,7 @@ void pixHandleKey(GLFWwindow *window, int key, int, int action, int) {
         pixUserKeyDownHandler(key);
     if (action == GLFW_RELEASE && pixUserKeyUpHandler)
         pixUserKeyUpHandler(key);
-    else if (pixUserKeyRepeatHandler)
+    else if (action != GLFW_RELEASE && pixUserKeyRepeatHandler)
         pixUserKeyRepeatHandler(key);
 }
 

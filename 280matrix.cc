@@ -44,7 +44,7 @@ struct matrix : public std::valarray<double> {
 matrix mat22Rotation(double theta) {
 	matrix m;
 	m[0] = cos(theta);
-	m[1] = -1 * sin(theta);
+	m[1] = -sin(theta);
 	m[2] = sin(theta);
 	m[3] = cos(theta);
 	return m;

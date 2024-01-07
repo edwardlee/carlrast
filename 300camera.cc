@@ -9,7 +9,7 @@ struct Camera {
 			double left, right, bottom, top, far, near;
 		};
 	};
-	bool projectionType;
+	bool projectionType = PERSPECTIVE;
 	Isometry iso;
 
 /* Builds a 4x4 matrix representing orthographic projection with a boxy viewing 
@@ -20,11 +20,9 @@ the viewing volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near
 going to -1. */
 void GetOrthographic(double (&proj)[4][4]) {
 	mat44Zero(proj);
-	proj[0][0] = 2. / (right - left);
-	proj[0][3] = (-right - left) / (right - left);
-	proj[1][1] = 2. / (top - bottom);
-	proj[1][3] = (-top - bottom) / (top - bottom);
-	proj[2][2] = -2. / (near - far);
+	proj[0][0] = 1. / right;
+	proj[1][1] = 1. / top;
+	proj[2][2] = 2. / (near - far);
 	proj[2][3] = (near + far) / (near - far);
 	proj[3][3] = 1.;
 }
@@ -32,12 +30,10 @@ void GetOrthographic(double (&proj)[4][4]) {
 /* Inverse to the matrix produced by camGetOrthographic. */
 void GetInverseOrthographic(double (&proj)[4][4]) {
 	mat44Zero(proj);
-	proj[0][0] = (right - left) / 2.;
-	proj[0][3] = (right + left) / 2.;
-	proj[1][1] = (top - bottom) / 2.;
-	proj[1][3] = (top + bottom) / 2.;
-	proj[2][2] = (near - far) / -2.;
-	proj[2][3] = (near + far) / 2.;
+	proj[0][0] = right;
+	proj[1][1] = top;
+	proj[2][2] = (near - far) / 2.;
+	proj[2][3] = (near + far) / -2.;
 	proj[3][3] = 1.;
 }
 
@@ -49,25 +45,21 @@ volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near going to
 -1. */
 void GetPerspective(double (&proj)[4][4]) {
 	mat44Zero(proj);
-	proj[0][0] = (-2. * near) / (right - left);
-	proj[0][2] = (right + left) / (right - left);
-	proj[1][1] = (-2. * near) / (top - bottom);
-	proj[1][2] = (top + bottom) / (top - bottom);
+	proj[0][0] = near / right;
+	proj[1][1] = near / top;
 	proj[2][2] = (near + far) / (near - far);
-	proj[2][3] = (-2. * near * far) / (near - far);
+	proj[2][3] = (2. * near * far) / (near - far);
 	proj[3][2] = -1.;
 }
 
 /* Inverse to the matrix produced by camGetPerspective. */
 void GetInversePerspective(double (&proj)[4][4]) {
 	mat44Zero(proj);
-	proj[0][0] = (right - left) / (-2. * near);
-	proj[0][3] = (right + left) / (-2. * near);
-	proj[1][1] = (top - bottom) / (-2. * near);
-	proj[1][3] = (top + bottom) / (-2. * near);
+	proj[0][0] = right / near;
+	proj[1][1] = top / near;
 	proj[2][3] = -1.;
-	proj[3][2] = (near - far) / (-2. * near * far);
-	proj[3][3] = (near + far) / (-2. * near * far);
+	proj[3][2] = (near - far) / (2. * near * far);
+	proj[3][3] = (near + far) / (2. * near * far);
 }
 
 
@@ -89,11 +81,11 @@ re-invoke this function after each time you resize the viewport. */
 void SetFrustum(
         double fovy, double focal, double ratio, double width, 
         double height) {
-	far = -focal * ratio;
-	near = -focal / ratio;
+	far = focal * ratio;
+	near = focal / ratio;
 	double tanHalfFovy = tan(fovy * 0.5);
 	if (projectionType == PERSPECTIVE)
-		top = -near * tanHalfFovy;
+		top = near * tanHalfFovy;
 	else
 		top = focal * tanHalfFovy;
 	bottom = -top;
@@ -106,11 +98,10 @@ camera's inverse isometry (regardless of whether the camera is in orthographic
 or perspective mode). */
 void GetProjectionInverseIsometry(double (&homog)[4][4]) {
 	double proj[4][4], inviso[4][4];
-	if(projectionType == ORTHOGRAPHIC) {
+	if(projectionType == ORTHOGRAPHIC)
 		GetOrthographic(proj);
-	} else {
+	else
 		GetPerspective(proj);
-	}
 	iso.GetInverseHomogeneous(inviso);
 	mat444Multiply(proj, inviso, homog);
 }
