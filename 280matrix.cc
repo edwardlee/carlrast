@@ -75,7 +75,7 @@ coordinates. More precisely, the transformation first rotates through the angle
 theta (in radians, counterclockwise), and then translates by the vector t. */
 void mat33Isometry(double theta, const double t[2], double (&isom)[3][3]) {
     isom[0][0] = cos(theta);
-    isom[0][1] = -1*sin(theta);
+    isom[0][1] = -sin(theta);
     isom[1][0] = sin(theta);
     isom[1][1] = cos(theta);
     isom[0][2] = t[0];

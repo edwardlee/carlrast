@@ -19,7 +19,6 @@ plane the box is the same rectangle R. Keep in mind that 0 > near > far. Maps
 the viewing volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near 
 going to -1. */
 void GetOrthographic(double (&proj)[4][4]) {
-	mat44Zero(proj);
 	proj[0][0] = 1. / right;
 	proj[1][1] = 1. / top;
 	proj[2][2] = 2. / (near - far);
@@ -44,7 +43,6 @@ far plane, the frustum is the rectangle (far / near) * R. Maps the viewing
 volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near going to 
 -1. */
 void GetPerspective(double (&proj)[4][4]) {
-	mat44Zero(proj);
 	proj[0][0] = near / right;
 	proj[1][1] = near / top;
 	proj[2][2] = (near + far) / (near - far);
@@ -97,7 +95,7 @@ void SetFrustum(
 camera's inverse isometry (regardless of whether the camera is in orthographic 
 or perspective mode). */
 void GetProjectionInverseIsometry(double (&homog)[4][4]) {
-	double proj[4][4], inviso[4][4];
+	double proj[4][4]{}, inviso[4][4];
 	if(projectionType == ORTHOGRAPHIC)
 		GetOrthographic(proj);
 	else

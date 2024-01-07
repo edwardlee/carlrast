@@ -13,6 +13,7 @@
 #include "300isometry.cc"
 #include "300camera.cc"
 #include "340landscape.cc"
+constexpr int LANDSIZE = 40;
 enum Attr {X, Y, Z, SA, TA, NA, OA, PA};
 enum Vary {W=3, SV, TV, NV, OV, PV, Q};
 
@@ -37,7 +38,7 @@ void shadeFragment(
 Depth buf(512, 512);
 Shading sha{16, 8, 1, 10, shadeFragment, shadeVertex};
 Texture tex(1, 2, 2, {0.8, 0.5});
-Landscape<LANDSIZE> landMesh;
+Land<LANDSIZE> land;
 double unif[16];
 double viewport[4][4];
 Camera cam;
@@ -47,7 +48,7 @@ void render() {
 	pixClearRGB(0.6, 0.2, 0.1);
 	buf.Clear(1.);
 	cam.GetProjectionInverseIsometry((double(&)[4][4])unif);
-	landMesh.Render(buf, viewport, sha, unif, tex);
+	land.Render(buf, viewport, sha, unif, tex);
 }
 
 void handleKeyUp(int key) {
@@ -88,7 +89,6 @@ void handleTimeStep(double oldTime, double newTime) {
 int main() {
 	pixInitialize(512, 512, "Landscape");
     /* Randomly generate a grid of elevation data. */
-    Land land;
     for (double m = 0.56; m <= 1.; m += 0.04)
 		land.FaultRandomly(m);
 	land.Blur();
@@ -96,9 +96,9 @@ int main() {
 	for (int i = 0; i < 4; ++i)
 		land.Bump(uid(land.gen), uid(land.gen), 5., 1.);
     /* Marshal resources. */
-    landMesh.Build(1., land.data);
+    land.Build();
 	/* Manually re-assign texture coordinates. */
-	for (auto &&v : landMesh.vert)
+	for (auto &&v : land.vert)
 	    v[TA] = v[Z];
     tex.SetTexel(0, 0, {1., 0.7});
     /* Configure viewport and camera. */
