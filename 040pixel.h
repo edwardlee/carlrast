@@ -46,7 +46,7 @@ relative to the lower left corner of the window. */
 void pixSetRGB(int index, const double (&rgb)[4]);
 
 /* Sets all pixels to the given RGB color. */
-void pixClearRGB(double red, double green, double blue);
+void pixClearRGB(const float(&)[3]);
 
 /* Inverse of pixCopyRGB. This function pastes the contents of the data array 
 into the window. */

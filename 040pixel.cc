@@ -152,13 +152,13 @@ void pixRun() {
         pixNewTime = glfwGetTime();
         if (pixUserTimeStepHandler)
             pixUserTimeStepHandler(pixOldTime, pixNewTime);
-        if (pixNeedsRedisplay) {
-            pixNeedsRedisplay = false;
+        // if (pixNeedsRedisplay) {
+            // pixNeedsRedisplay = false;
             glTextureSubImage2D(pixTexture, 0, 0, 0, pixWidth, 
                pixHeight, GL_RGB, GL_FLOAT, data(pixPixels));
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glfwSwapBuffers(pixWindow);
-        }
+        // }
     }
 }
 
@@ -181,12 +181,18 @@ void pixSetRGB(int index, const double (&rgb)[4]) {
     pixPixels[index + 2] = rgb[2];
 }
 
+#include <experimental/simd>
+using namespace std::experimental;
 /* Sets all pixels to the given RGB color. */
-void pixClearRGB(double red, double green, double blue) {
-    for (int index = 0; index < pixPixels.size(); index += 3) {
-        pixPixels[index] = red;
-        pixPixels[index + 1] = green;
-        pixPixels[index + 2] = blue;
+void pixClearRGB(const float (&f)[3]) {
+    native_simd<float> a([&f](int i){return f[i % 3];});
+    native_simd<float> b([&f](int i){return f[(i+2) % 3];});
+    native_simd<float> c([&f](int i){return f[(i+1) % 3];});
+    constexpr int k = 3 * a.size();
+    for (int index = 0; index < pixPixels.size(); index += k) {
+        a.copy_to(&pixPixels[index], element_aligned);
+        b.copy_to(&pixPixels[index]+8, element_aligned);
+        c.copy_to(&pixPixels[index]+16, element_aligned);
     }
     pixNeedsRedisplay = true;
 }

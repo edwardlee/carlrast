@@ -15,7 +15,7 @@
 #include "340landscape.cc"
 constexpr int LANDSIZE = 40;
 enum Attr {X, Y, Z, SA, TA, NA, OA, PA};
-enum Vary {W=3, SV, TV, NV, OV, PV, Q};
+enum Vary {W=3, SV, TV, NV, OV, PV};
 
 /* The first four entries of vary are assumed to be X, Y, Z, W. */
 void shadeVertex(
@@ -24,19 +24,18 @@ void shadeVertex(
 	mat441Multiply((double(*&&)[4])(unif), attrHomog, (double(&)[4])vary);
 	vary[TV] = attr[TA];
 	vary[PV] = attr[PA];
-    vary[Q] = 1.;
 }
 
 void shadeFragment(
         const double unif[], Texture &tex, const double vary[], double (&rgbd)[4]) {
-	tex.Sample(0., vary[TV]/vary[Q], rgbd);
-	double intensity = vary[PV] / vary[Q];
+	tex.Sample(0., vary[TV]*vary[W], rgbd);
+	double intensity = vary[PV] * vary[W];
     for(int i = 0; i < 2; ++i) rgbd[i] *= intensity;
 	rgbd[3] = vary[Z];
 }
 
 Depth buf(512, 512);
-Shading sha{16, 8, 1, 10, shadeFragment, shadeVertex};
+Shading sha{16, 8, 1, 9, shadeFragment, shadeVertex};
 Texture tex(1, 2, 2, {0.8, 0.5});
 Land<LANDSIZE> land;
 double unif[16];
@@ -45,7 +44,7 @@ Camera cam;
 double angle = M_PI_4;
 
 void render() {
-	pixClearRGB(0.6, 0.2, 0.1);
+	pixClearRGB({0.6, 0.2, 0.1});
 	buf.Clear(1.);
 	cam.GetProjectionInverseIsometry((double(&)[4][4])unif);
 	land.Render(buf, viewport, sha, unif, tex);
