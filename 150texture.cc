@@ -94,7 +94,8 @@ handled in the code above.
 /* Gets a single texel within the texture. Assumes that texel has the same texel 
 dimension as the texture. Texel (s, t) = (0, 0) is in the lower left corner, 
 texel (width - 1, 0) is in the lower right corner, etc. */
-void GetTexel(int s, int t, double (&texel)[]) {
+template<size_t D>
+void GetTexel(int s, int t, double (&texel)[D]) {
     copy_n(&data[(s + width * t) * texelDim], texelDim, texel);
 }
 
@@ -116,7 +117,8 @@ texture coordinates [0, 1] x [0, 1], with (0, 0) in the lower left corner, (1,
 0) in the lower right corner, etc. Assumes that the texture has already been 
 initialized. Assumes that sample has been allocated with (at least) texelDim 
 doubles. Places the sampled texel into sample. */
-void Sample(double s, double t, double (&sample)[]) {
+template<size_t D>
+void Sample(double s, double t, double (&sample)[D]) {
     /* Handle clipping vs. repeating. */
     if (leftRight == REPEAT)
         s -= floor(s);
@@ -142,7 +144,7 @@ void Sample(double s, double t, double (&sample)[]) {
         GetTexel(round(u), round(v), sample);
     else {
         // 0,0 , 0,1 , 1,0 , 1,1	
-        double ff[texelDim], fc[texelDim], cf[texelDim], cc[texelDim];
+        double ff[D], fc[D], cf[D], cc[D];
         GetTexel(u, v, ff); 
         GetTexel(u, ceil(v), fc);	
         GetTexel(ceil(u), v, cf);	

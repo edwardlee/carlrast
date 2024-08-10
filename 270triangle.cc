@@ -2,8 +2,9 @@
 #include "040pixel.h"
 using std::min, std::max;
 
+template<Shading sha>
 void triRender(
-        Shading &sha, Depth &buf, const double (&unif)[], 
+        Depth &buf, const double (&unif)[], 
         Texture &tex, const double (&a)[], const double (&b)[], 
         const double (&c)[]) {
     // 28.4 fixed-point coordinates
@@ -12,15 +13,15 @@ void triRender(
     const int Y3 = (16 * c[1]);
 
     // Bounding rectangle
-    int miny = max(min({Y1, Y2, Y3}) + 0xF >> 4, 0);
-    int maxy = min(max({Y1, Y2, Y3}) + 0xF >> 4, buf.height);
+    int miny = max((min({Y1, Y2, Y3}) + 0xF) >> 4, 0);
+    int maxy = min((max({Y1, Y2, Y3}) + 0xF) >> 4, buf.height);
 
     const int X1 = (16 * a[0]);
     const int X2 = (16. * b[0]);
     const int X3 = (16 * c[0]);
 
-    int minx = max(min({X1, X2, X3}) + 0xF >> 4, 0);
-    int maxx = min(max({X1, X2, X3}) + 0xF >> 4, buf.width);
+    int minx = max((min({X1, X2, X3}) + 0xF) >> 4, 0);
+    int maxx = min((max({X1, X2, X3}) + 0xF) >> 4, buf.width);
 
     // Deltas
     int DX12 = X2 - X1;

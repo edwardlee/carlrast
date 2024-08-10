@@ -23,7 +23,7 @@ void SetTriangle(int n, int i, int j, int k) {
 
 /* Sets the vertth vertex to have attributes attr. */
 void SetVertex(int n, const double (&attr)[a]) {
-	ranges::copy(attr, vert[n]);
+	std::ranges::copy(attr, vert[n]);
 }
 
 /*** Rendering ***/
@@ -31,11 +31,12 @@ void lerp
 	(int varyDim, const double va[], const double vb[], double (&vn)[]) {
 	double T = (va[2] + va[3])/(va[2] + va[3] - vb[2] - vb[3]);
 	for(int i = 0; i < varyDim; ++i)
-		vn[i] = ::lerp(va[i], vb[i], T);
+		vn[i] = std::lerp(va[i], vb[i], T);
 }
 
+template<Shading sha>
 void Render(
-        Depth &buf, const double viewport[4][4], Shading &sha, 
+        Depth &buf, const double viewport[4][4], 
 	const double (&unif)[], Texture &tex) {
     for(int (&T)[3] : tri) {
         double va[sha.varyDim], vb[sha.varyDim], vc[sha.varyDim];
@@ -57,7 +58,7 @@ void Render(
 			mat441Multiply(viewport, vc, vvc);
 			for(int i = 0; i < 3; ++i) vvc[i] /= vvc[3];
 			for(int i = 4; i < sha.varyDim; ++i) vvc[i] = vc[i]/vvc[3];
-			triRender(sha, buf, unif, tex, vva, vvb, vvc);
+			triRender<sha>(buf, unif, tex, vva, vvb, vvc);
 		};
 		if(ca) {
 			if(cb) {

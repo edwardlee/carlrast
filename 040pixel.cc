@@ -74,6 +74,10 @@ void pixInitGLFWGL3W(std::string_view name) {
     glfwSetErrorCallback(pixHandleError);
     glfwInit();
     glfwWindowHint(GLFW_RESIZABLE, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     pixWindow = glfwCreateWindow(pixWidth, pixHeight, data(name), nullptr, nullptr);
     glfwMakeContextCurrent(pixWindow);
     glfwSetKeyCallback(pixWindow, pixHandleKey);
@@ -86,19 +90,22 @@ void pixInitGLFWGL3W(std::string_view name) {
 // Create the texture.
 void pixInitTexture() {
     pixPixels = std::span(new float[3 * pixWidth * pixHeight], 3 * pixWidth * pixHeight);
-    glCreateTextures(GL_TEXTURE_2D, 1, &pixTexture);
-    glTextureStorage2D(pixTexture, 1, GL_RGB32F, pixWidth, pixHeight);
-    glBindTextureUnit(0, pixTexture);
+    glGenTextures(1, &pixTexture);
+    glBindTexture(GL_TEXTURE_2D, pixTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, pixWidth, pixHeight, 0, 
+        GL_RGB, GL_FLOAT, data(pixPixels));
 }
 
-GLchar vertexCode[] = R"(#version 450
+GLchar vertexCode[] = R"(#version 410
 out vec2 texCoords;
 void main() {
     vec2 vertices[3] = vec2[3](vec2(-1,-1), vec2(3,-1), vec2(-1, 3));
     gl_Position = vec4(vertices[gl_VertexID], 0, 1);
     texCoords = 0.5 * gl_Position.xy + vec2(0.5);
 })";
-GLchar fragmentCode[] = R"(#version 450
+GLchar fragmentCode[] = R"(#version 410
 out vec4 color;
 in vec2 texCoords;
 uniform sampler2D texture0;
@@ -109,6 +116,9 @@ void main() {
 void pixInitShaders() {    
     pixProgram = pixBuildVertexFragmentProgram(vertexCode, fragmentCode);
     glUseProgram(pixProgram);
+    GLuint emptyVAO;
+    glGenVertexArrays(1, &pixProgram);
+    glBindVertexArray(pixProgram);
 }
 
 /*** Public: miscellaneous ***/
@@ -154,8 +164,8 @@ void pixRun() {
             pixUserTimeStepHandler(pixOldTime, pixNewTime);
         // if (pixNeedsRedisplay) {
             // pixNeedsRedisplay = false;
-            glTextureSubImage2D(pixTexture, 0, 0, 0, pixWidth, 
-               pixHeight, GL_RGB, GL_FLOAT, data(pixPixels));
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pixWidth, 
+                            pixHeight, GL_RGB, GL_FLOAT, data(pixPixels));
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glfwSwapBuffers(pixWindow);
         // }

@@ -60,7 +60,7 @@ void Blur() {
 				data[i - 1][j + 1] + 
 				data[i - 1][j - 1]) / 9.;
 		}
-	data = move(copy);
+	data = std::move(copy);
 }
 
 /* Forms a Gaussian hill or valley at (x, y), with width controlled by stddev 
@@ -148,8 +148,9 @@ void Build(double spacing=1.) {
         /* Build the vertices with normals set to 0. */
         for (i = 0; i < size; ++i)
             for (j = 0; j < size; ++j) {
-                ranges::copy((double(&&)[8]){i * spacing, j * spacing, data[i][j], 
-                    (double)i, (double)j}, this->vert[i * size + j]);
+                double vert[8] = {i * spacing, j * spacing, data[i][j], 
+                    (double)i, (double)j};
+                ranges::copy(vert, this->vert[i * size + j]);
             }
         /* Build the triangles. */
         for (i = 0; i < size - 1; ++i)

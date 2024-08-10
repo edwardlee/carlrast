@@ -153,8 +153,9 @@ void mat444Multiply(
 
 /* Multiplies m by v, placing the answer in mTimesV. The output CANNOT safely 
 alias the input. */
+template<size_t D>
 void mat441Multiply(
-        const double m[4][4], const double v[4], double (&mTimesV)[]) {
+        const double m[4][4], const double v[4], double (&mTimesV)[D]) {
     for(int i = 0; i < 4; ++i) {
         mTimesV[i] = m[i][0]*v[0]+m[i][1]*v[1]+m[i][2]*v[2]+m[i][3]*v[3];
     }

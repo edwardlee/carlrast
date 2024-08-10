@@ -1,5 +1,7 @@
 /* On Ubuntu, compile with...
-    g++ 350mainClipping.cc -std=c++20 040pixel.o gl3w.o -lglfw -Ofast -march=native */
+    g++ 350mainClipping.cc -std=c++20 040pixel.o gl3w.o -lglfw -Ofast -march=native
+   On Mac, compile with...
+    g++ 350mainClipping.cc -std=c++20 040pixel.o gl3w.o -lglfw3 -Ofast -march=native -framework Cocoa -framework IOKit */
 
 #include <GLFW/glfw3.h>
 
@@ -35,7 +37,7 @@ void shadeFragment(
 }
 
 Depth buf(512, 512);
-Shading sha{16, 8, 1, 9, shadeFragment, shadeVertex};
+constexpr Shading sha{16, 8, 1, 9, shadeFragment, shadeVertex};
 Texture tex(1, 2, 2, {0.8, 0.5});
 Land<LANDSIZE> land;
 double unif[16];
@@ -47,7 +49,7 @@ void render() {
 	pixClearRGB({0.6, 0.2, 0.1});
 	buf.Clear(1.);
 	cam.GetProjectionInverseIsometry((double(&)[4][4])unif);
-	land.Render(buf, viewport, sha, unif, tex);
+	land.Render<sha>(buf, viewport, unif, tex);
 }
 
 void handleKeyUp(int key) {
