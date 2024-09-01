@@ -2,7 +2,7 @@
 #include "040pixel.h"
 using std::min, std::max;
 
-template<Shading sha>
+template<Shading const &sha>
 void triRender(
         Depth &buf, const double (&unif)[], 
         Texture &tex, const double (&a)[], const double (&b)[], 

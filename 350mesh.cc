@@ -34,7 +34,7 @@ void lerp
 		vn[i] = std::lerp(va[i], vb[i], T);
 }
 
-template<Shading sha>
+template<Shading const &sha>
 void Render(
         Depth &buf, const double viewport[4][4], 
 	const double (&unif)[], Texture &tex) {
